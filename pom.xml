@@ -20,6 +20,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>21.0.2</javafx.version>
         <junit.version>5.10.2</junit.version>
+        <mysql.connector.version>8.4.0</mysql.connector.version>
         <mainClass>com.cqu.drs.MainApp</mainClass>
     </properties>
 
@@ -37,11 +38,31 @@
             <version>${javafx.version}</version>
         </dependency>
 
-        <!-- Gson: JSON persistence for the data tier -->
+        <!-- Gson: serialises the protocol messages, and reads the Assessment 2
+             JSON files during migration -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
+        </dependency>
+
+        <!-- MySQL Connector/J: the JDBC driver for the data tier.
+
+             This is a run time dependency only. Every class in com.cqu.drs.db
+             and com.cqu.drs.repository is written against the java.sql
+             interfaces in the JDK and none of them imports com.mysql.cj, so
+             the project compiles whether or not the driver has been
+             downloaded. The driver registers itself through
+             META-INF/services/java.sql.Driver, so no Class.forName call is
+             needed.
+
+             mysql-connector-j is the current artifact. The older
+             mysql:mysql-connector-java coordinate is deprecated and must not
+             be used. -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>${mysql.connector.version}</version>
         </dependency>
 
         <!-- JUnit 5: unit testing -->
@@ -78,6 +99,18 @@
                 <configuration>
                     <mainClass>${mainClass}</mainClass>
                 </configuration>
+            </plugin>
+
+            <!-- Runs the plain Java entry points, which have no JavaFX stage
+                 and so cannot be started by javafx:run. Declared with a fixed
+                 version so the command behaves the same on every machine:
+
+                   mvn compile exec:java \
+                     -Dexec.mainClass=com.cqu.drs.db.SchemaTool -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.1</version>
             </plugin>
 
         </plugins>
