@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.cqu.drs.controller.CoordinationController"
+            prefHeight="680.0" prefWidth="980.0" stylesheets="@../css/drs.css">
+
+    <top>
+        <VBox spacing="4.0" styleClass="header-bar">
+            <Label styleClass="header-title" text="Coordinate a response" />
+            <Label styleClass="header-subtitle"
+                   text="Choose the departments to send, holding Ctrl to choose more than one, then press Dispatch." />
+        </VBox>
+    </top>
+
+    <center>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER">
+            <VBox spacing="12.0" styleClass="content-pane">
+
+                <Label styleClass="section-title" text="Report" />
+                <TextArea fx:id="reportArea" editable="false" minHeight="70.0"
+                          prefHeight="70.0" wrapText="true" />
+
+                <VBox spacing="10.0" styleClass="card">
+
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <Label styleClass="field-label" text="Departments *" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Label fx:id="availabilityHint" styleClass="hint-text" wrapText="true" />
+                        <Button fx:id="refreshDepartmentsButton"
+                                onAction="#handleRefreshDepartments"
+                                styleClass="button-secondary" text="Refresh" />
+                    </HBox>
+
+                    <!-- minHeight matters: without it the list collapses to nothing
+                         whenever the window is shorter than the content. -->
+                    <ListView fx:id="departmentList" minHeight="185.0" prefHeight="185.0" />
+                    <Label fx:id="messageLabel" styleClass="error-text" wrapText="true" />
+
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <Button fx:id="dispatchButton" onAction="#handleDispatch"
+                                styleClass="button-primary" text="Dispatch" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Button fx:id="backButton" onAction="#handleBack"
+                                styleClass="button-secondary" text="Back to dashboard" />
+                    </HBox>
+                </VBox>
+
+                <Label styleClass="section-title" text="Work already dispatched" />
+                <TableView fx:id="taskTable" minHeight="160.0" prefHeight="190.0">
+                    <columns>
+                        <TableColumn fx:id="taskIdColumn" prefWidth="140.0" text="Task" />
+                        <TableColumn fx:id="departmentColumn" prefWidth="230.0" text="Department" />
+                        <TableColumn fx:id="taskStatusColumn" prefWidth="140.0" text="Status" />
+                        <TableColumn fx:id="notifiedColumn" prefWidth="150.0" text="Notified" />
+                    </columns>
+                </TableView>
+
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Button fx:id="followUpButton" onAction="#handleRecordFollowUp"
+                            styleClass="button-secondary" text="Record follow-up on selected task" />
+                    <Label styleClass="hint-text" wrapText="true"
+                           text="A department shown as not notified did not receive its notice. Follow it up through another channel, then record it here so the disaster can be resolved." />
+                </HBox>
+
+            </VBox>
+        </ScrollPane>
+    </center>
+
+</BorderPane>

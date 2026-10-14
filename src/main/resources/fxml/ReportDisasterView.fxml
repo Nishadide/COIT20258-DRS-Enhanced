@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.cqu.drs.controller.ReportDisasterController"
+            prefHeight="680.0" prefWidth="980.0" stylesheets="@../css/drs.css">
+
+    <top>
+        <VBox spacing="4.0" styleClass="header-bar-emergency">
+            <Label styleClass="header-title" text="Report a disaster" />
+            <Label styleClass="header-subtitle-emergency"
+                   text="No account is needed. Leave your details only if you want to." />
+        </VBox>
+    </top>
+
+    <center>
+        <ScrollPane fitToWidth="true">
+            <VBox spacing="16.0" styleClass="content-pane">
+
+                <!-- What happened: the fields a responder needs in order to act -->
+                <VBox spacing="10.0" styleClass="card">
+                    <Label styleClass="section-title" text="What has happened" />
+
+                    <Label styleClass="field-label" text="Type of disaster *" />
+                    <ComboBox fx:id="typeCombo" maxWidth="Infinity"
+                              promptText="Select the kind of disaster" />
+
+                    <Label styleClass="field-label" text="How serious does it look? *" />
+                    <ComboBox fx:id="severityCombo" maxWidth="Infinity"
+                              promptText="Select a severity" />
+
+                    <Label styleClass="field-label" text="Where it is happening *" />
+                    <TextField fx:id="addressField"
+                               promptText="Street address, or a description of the place" />
+
+                    <CheckBox fx:id="useLocationCheck" onAction="#handleUseMyLocation"
+                              text="Add the coordinates of my location" />
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <TextField fx:id="latitudeField" disable="true" prefWidth="160.0"
+                                   promptText="Latitude" />
+                        <TextField fx:id="longitudeField" disable="true" prefWidth="160.0"
+                                   promptText="Longitude" />
+                        <Label fx:id="coordinateHint" styleClass="hint-text" wrapText="true"
+                               text="Optional. Helps responders find the place." />
+                    </HBox>
+
+                    <Label styleClass="field-label" text="Anything else you can tell us" />
+                    <TextArea fx:id="descriptionArea" prefRowCount="4" wrapText="true"
+                              promptText="Describe what you can see" />
+                </VBox>
+
+                <!-- Your details: entirely optional, which is what makes reporting open -->
+                <VBox spacing="10.0" styleClass="card">
+                    <Label styleClass="section-title" text="Your details (optional)" />
+                    <Label styleClass="hint-text" wrapText="true"
+                           text="Leave these blank to report anonymously. If you give a name we can contact you about the report." />
+
+                    <HBox spacing="10.0">
+                        <VBox prefWidth="260.0" spacing="6.0">
+                            <Label styleClass="field-label" text="Your name" />
+                            <TextField fx:id="nameField" promptText="Optional" />
+                        </VBox>
+                        <VBox prefWidth="220.0" spacing="6.0">
+                            <Label styleClass="field-label" text="Contact number" />
+                            <TextField fx:id="contactField" promptText="8 to 15 digits" />
+                        </VBox>
+                    </HBox>
+                </VBox>
+
+                <Label fx:id="messageLabel" styleClass="error-text" wrapText="true" />
+
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Button fx:id="submitButton" onAction="#handleSubmit"
+                            styleClass="button-danger,button-large" text="Submit report" />
+                    <Button fx:id="cancelButton" onAction="#handleCancel"
+                            styleClass="button-secondary" text="Cancel" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Label styleClass="hint-text" text="* required" />
+                    <padding><Insets bottom="10.0" /></padding>
+                </HBox>
+
+            </VBox>
+        </ScrollPane>
+    </center>
+
+</BorderPane>

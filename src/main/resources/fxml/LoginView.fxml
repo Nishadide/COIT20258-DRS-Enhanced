@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.cqu.drs.controller.LoginController"
+            prefHeight="680.0" prefWidth="980.0" stylesheets="@../css/drs.css">
+
+    <top>
+        <VBox spacing="4.0" styleClass="header-bar">
+            <Label styleClass="header-title" text="Staff sign in" />
+            <Label styleClass="header-subtitle"
+                   text="Reporting a disaster does not require an account." />
+        </VBox>
+    </top>
+
+    <center>
+        <VBox alignment="CENTER" styleClass="content-pane">
+            <VBox maxWidth="380.0" spacing="12.0" styleClass="card">
+
+                <Label styleClass="section-title" text="Sign in" />
+
+                <Label styleClass="field-label" text="Username" />
+                <TextField fx:id="usernameField" promptText="e.g. coordinator" />
+
+                <Label styleClass="field-label" text="Password" />
+                <PasswordField fx:id="passwordField" promptText="Password" />
+
+                <Label fx:id="messageLabel" styleClass="error-text" wrapText="true" />
+
+                <Button fx:id="loginButton" defaultButton="true" maxWidth="Infinity"
+                        onAction="#handleLogin" styleClass="button-primary" text="Sign in" />
+                <Button fx:id="backButton" maxWidth="Infinity" onAction="#handleBack"
+                        styleClass="button-secondary" text="Back" />
+
+            </VBox>
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER" styleClass="status-bar">
+            <Label styleClass="hint-text"
+                   text="You must replace the password you were given the first time you sign in." />
+        </HBox>
+    </bottom>
+
+</BorderPane>

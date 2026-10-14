@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.cqu.drs.controller.AccountManagementController"
+            prefHeight="680.0" prefWidth="980.0" stylesheets="@../css/drs.css">
+
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="header-bar">
+            <VBox spacing="2.0">
+                <Label styleClass="header-title" text="Accounts and roles" />
+                <Label fx:id="userLabel" styleClass="header-subtitle" text="Signed in" />
+            </VBox>
+            <Region HBox.hgrow="ALWAYS" />
+            <Button fx:id="auditButton" onAction="#handleViewAudit"
+                    styleClass="button-secondary" text="Audit log" />
+            <Button fx:id="logoutButton" onAction="#handleLogout"
+                    styleClass="button-secondary" text="Sign out" />
+        </HBox>
+    </top>
+
+    <center>
+        <ScrollPane fitToWidth="true">
+            <VBox spacing="14.0" styleClass="content-pane">
+
+                <Label styleClass="section-title" text="Accounts" />
+                <TableView fx:id="userTable" prefHeight="210.0">
+                    <columns>
+                        <TableColumn fx:id="usernameColumn" prefWidth="150.0" text="Username" />
+                        <TableColumn fx:id="nameColumn" prefWidth="230.0" text="Name" />
+                        <TableColumn fx:id="roleColumn" prefWidth="180.0" text="Role" />
+                        <TableColumn fx:id="departmentColumn" prefWidth="130.0" text="Department" />
+                        <TableColumn fx:id="activeColumn" prefWidth="90.0" text="Active" />
+                    </columns>
+                </TableView>
+
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Button fx:id="deactivateButton" onAction="#handleDeactivate"
+                            styleClass="button-secondary" text="Deactivate selected" />
+                    <Button fx:id="reactivateButton" onAction="#handleReactivate"
+                            styleClass="button-secondary" text="Reactivate selected" />
+                    <Button fx:id="changeRoleButton" onAction="#handleChangeRole"
+                            styleClass="button-secondary" text="Change role of selected" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Button fx:id="refreshButton" onAction="#handleRefresh"
+                            styleClass="button-secondary" text="Refresh" />
+                </HBox>
+
+                <!-- Creating an account -->
+                <VBox spacing="10.0" styleClass="card">
+                    <Label styleClass="section-title" text="Create an account" />
+
+                    <HBox spacing="10.0">
+                        <VBox prefWidth="220.0" spacing="6.0">
+                            <Label styleClass="field-label" text="Username *" />
+                            <TextField fx:id="usernameField" promptText="3 to 20 characters" />
+                        </VBox>
+                        <VBox prefWidth="240.0" spacing="6.0">
+                            <Label styleClass="field-label" text="Full name *" />
+                            <TextField fx:id="fullNameField" promptText="Name of the person" />
+                        </VBox>
+                        <VBox prefWidth="200.0" spacing="6.0">
+                            <Label styleClass="field-label" text="Initial password *" />
+                            <PasswordField fx:id="passwordField"
+                                           promptText="At least 8 characters" />
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="10.0">
+                        <VBox prefWidth="220.0" spacing="6.0">
+                            <Label styleClass="field-label" text="Role *" />
+                            <ComboBox fx:id="roleCombo" maxWidth="Infinity"
+                                      promptText="Select a role" />
+                        </VBox>
+                        <VBox prefWidth="240.0" spacing="6.0">
+                            <Label styleClass="field-label" text="Department" />
+                            <ComboBox fx:id="departmentCombo" maxWidth="Infinity"
+                                      promptText="Responders only" />
+                        </VBox>
+                    </HBox>
+
+                    <Label fx:id="messageLabel" styleClass="error-text" wrapText="true" />
+
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <Button fx:id="createButton" onAction="#handleCreate"
+                                styleClass="button-primary" text="Create account" />
+                        <Button fx:id="dashboardButton" onAction="#handleDashboard"
+                                styleClass="button-secondary" text="Coordinator dashboard" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Label styleClass="hint-text" text="* required" />
+                    </HBox>
+                </VBox>
+
+                <!-- Department availability, which drives the dispatch failure path -->
+                <VBox spacing="10.0" styleClass="card">
+                    <Label styleClass="section-title" text="Department availability" />
+                    <Label styleClass="hint-text" wrapText="true"
+                           text="A department marked unavailable still receives its dispatch notice, but the notice is recorded as having failed and the coordinator is asked to follow up through another channel." />
+
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <ComboBox fx:id="availabilityCombo" prefWidth="300.0"
+                                  promptText="Select a department" />
+                        <Button fx:id="toggleAvailabilityButton"
+                                onAction="#handleToggleAvailability"
+                                styleClass="button-secondary" text="Toggle availability" />
+                        <Label fx:id="availabilityLabel" styleClass="info-text" wrapText="true" />
+                    </HBox>
+                </VBox>
+
+            </VBox>
+        </ScrollPane>
+    </center>
+
+</BorderPane>

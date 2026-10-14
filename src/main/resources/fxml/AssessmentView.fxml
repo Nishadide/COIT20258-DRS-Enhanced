@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.cqu.drs.controller.AssessmentController"
+            prefHeight="680.0" prefWidth="980.0" stylesheets="@../css/drs.css">
+
+    <top>
+        <VBox spacing="4.0" styleClass="header-bar">
+            <Label styleClass="header-title" text="Assess a disaster" />
+            <Label styleClass="header-subtitle"
+                   text="The response priority follows from the severity you record." />
+        </VBox>
+    </top>
+
+    <center>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER">
+            <VBox spacing="14.0" styleClass="content-pane">
+
+            <Label styleClass="section-title" text="Report" />
+            <TextArea fx:id="reportArea" editable="false" minHeight="130.0" prefHeight="130.0" wrapText="true" />
+
+            <VBox spacing="10.0" styleClass="card">
+                <Label styleClass="field-label" text="Severity *" />
+                <ComboBox fx:id="severityCombo" maxWidth="Infinity"
+                          promptText="How serious is it?" />
+                <Label fx:id="priorityLabel" styleClass="info-text"
+                       text="Priority will be set from the severity." />
+
+                <Label styleClass="field-label" text="Notes" />
+                <TextArea fx:id="notesArea" minHeight="90.0" prefHeight="90.0" wrapText="true"
+                          promptText="What you found on assessing the report" />
+            </VBox>
+
+            <Label fx:id="messageLabel" styleClass="error-text" wrapText="true" />
+
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Button fx:id="assessButton" onAction="#handleAssess"
+                        styleClass="button-primary" text="Record assessment" />
+                <Button fx:id="backButton" onAction="#handleBack"
+                        styleClass="button-secondary" text="Back to dashboard" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Label styleClass="hint-text" text="* required" />
+            </HBox>
+
+            </VBox>
+        </ScrollPane>
+    </center>
+
+</BorderPane>

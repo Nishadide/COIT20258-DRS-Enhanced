@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.cqu.drs.controller.WelcomeController"
+            prefHeight="680.0" prefWidth="980.0" stylesheets="@../css/drs.css">
+
+    <top>
+        <VBox spacing="4.0" styleClass="header-bar">
+            <Label styleClass="header-title-large" text="Disaster Response System" />
+            <Label styleClass="header-subtitle"
+                   text="Report a disaster, or sign in as a member of staff" />
+        </VBox>
+    </top>
+
+    <center>
+        <VBox alignment="CENTER" spacing="24.0" styleClass="content-pane">
+
+            <Label styleClass="emergency-notice" text="In an emergency, always call 000 first." />
+
+            <VBox alignment="CENTER" maxWidth="440.0" spacing="14.0" styleClass="card">
+                <Label styleClass="section-title" text="Report a disaster" />
+                <Label styleClass="hint-text" textAlignment="CENTER" wrapText="true"
+                       text="Anyone can report. No account is needed, and you may leave your name out." />
+                <Button fx:id="reportButton" maxWidth="Infinity" onAction="#handleReportDisaster"
+                        styleClass="button-danger,button-large" text="Report a disaster" />
+                <Button fx:id="trackButton" maxWidth="Infinity" onAction="#handleTrackReport"
+                        styleClass="button-secondary" text="Check a report I lodged" />
+            </VBox>
+
+            <VBox alignment="CENTER" maxWidth="440.0" spacing="14.0" styleClass="card">
+                <Label styleClass="section-title" text="Staff" />
+                <Label styleClass="hint-text" textAlignment="CENTER" wrapText="true"
+                       text="Coordinators, responders and administrators sign in here." />
+                <Button fx:id="signInButton" maxWidth="Infinity" onAction="#handleSignIn"
+                        styleClass="button-primary" text="Staff sign in" />
+            </VBox>
+
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER" styleClass="status-bar">
+            <Label fx:id="statusLabel" styleClass="hint-text" text="Ready" />
+        </HBox>
+    </bottom>
+
+</BorderPane>

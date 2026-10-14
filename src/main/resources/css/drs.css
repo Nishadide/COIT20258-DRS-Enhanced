@@ -1,0 +1,187 @@
+/*
+ * Disaster Response System
+ * One stylesheet for the whole application, so that a colour or a spacing is
+ * decided once and every screen follows it. Keeping the styling here rather
+ * than on individual elements means the look can be changed without touching
+ * the layouts.
+ */
+
+/* ---------- palette and base ---------- */
+
+.root {
+    -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: #FFFFFF;
+
+    /* The palette, named once and referred to below. */
+    navy: #1F3864;
+    action: #2E74B5;
+    emergency: #C0392B;
+    panel: #F5F5F5;
+    muted: #7F7F7F;
+    line: #D6D6D6;
+}
+
+/* ---------- headers ---------- */
+
+.header-bar {
+    -fx-background-color: navy;
+    -fx-padding: 16 28 16 28;
+}
+
+.header-bar-emergency {
+    -fx-background-color: emergency;
+    -fx-padding: 16 28 16 28;
+}
+
+.header-title {
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
+.header-title-large {
+    -fx-text-fill: white;
+    -fx-font-size: 23px;
+    -fx-font-weight: bold;
+}
+
+.header-subtitle {
+    -fx-text-fill: #C9D4E8;
+    -fx-font-size: 12px;
+}
+
+.header-subtitle-emergency {
+    -fx-text-fill: #F7DDD9;
+    -fx-font-size: 12px;
+}
+
+/* ---------- content ---------- */
+
+.content-pane {
+    -fx-padding: 24 40 24 40;
+}
+
+.section-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #222222;
+}
+
+.field-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+}
+
+.hint-text {
+    -fx-font-size: 11px;
+    -fx-text-fill: muted;
+}
+
+.error-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: emergency;
+}
+
+.info-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: action;
+    -fx-font-weight: bold;
+}
+
+.emergency-notice {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: emergency;
+}
+
+/* ---------- buttons ---------- */
+
+.button {
+    -fx-background-radius: 3;
+    -fx-padding: 9 18 9 18;
+    -fx-cursor: hand;
+}
+
+.button-primary {
+    -fx-background-color: action;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 11 22 11 22;
+}
+
+.button-primary:hover {
+    -fx-background-color: derive(#2E74B5, -12%);
+}
+
+.button-danger {
+    -fx-background-color: emergency;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 11 22 11 22;
+}
+
+.button-danger:hover {
+    -fx-background-color: derive(#C0392B, -12%);
+}
+
+.button-secondary {
+    -fx-background-color: #ECECEC;
+    -fx-text-fill: #333333;
+    -fx-border-color: line;
+    -fx-border-radius: 3;
+    -fx-padding: 11 22 11 22;
+}
+
+.button-secondary:hover {
+    -fx-background-color: #E0E0E0;
+}
+
+.button-large {
+    -fx-font-size: 15px;
+    -fx-padding: 15 24 15 24;
+}
+
+/* ---------- panels, tables and inputs ---------- */
+
+.side-panel {
+    -fx-background-color: panel;
+    -fx-padding: 18;
+    -fx-border-color: transparent line transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+
+.status-bar {
+    -fx-background-color: panel;
+    -fx-padding: 10 20 10 20;
+    -fx-border-color: line transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: action;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #D6E4F2;
+    -fx-text-fill: #1F3864;
+}
+
+.text-field, .password-field, .text-area, .combo-box, .list-view {
+    -fx-background-radius: 3;
+    -fx-border-radius: 3;
+}
+
+.card {
+    -fx-background-color: white;
+    -fx-border-color: line;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 24;
+}
