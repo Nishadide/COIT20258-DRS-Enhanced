@@ -5,6 +5,8 @@ import com.cqu.drs.model.UserRole;
 import com.cqu.drs.repository.AuditRepository;
 import com.cqu.drs.repository.JsonDataStore;
 import com.cqu.drs.repository.UserRepository;
+import com.cqu.drs.repository.JsonAuditRepository;
+import com.cqu.drs.repository.JsonUserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,8 +35,8 @@ class AuthenticationServiceTest {
     @BeforeEach
     void setUp(@TempDir Path tempDir) {
         JsonDataStore store = new JsonDataStore(tempDir);
-        UserRepository userRepository = new UserRepository(store);
-        AuditService auditService = new AuditService(new AuditRepository(store));
+        UserRepository userRepository = new JsonUserRepository(store);
+        AuditService auditService = new AuditService(new JsonAuditRepository(store));
 
         accountService = new AccountService(userRepository, auditService);
         authService = new AuthenticationService(userRepository, auditService);

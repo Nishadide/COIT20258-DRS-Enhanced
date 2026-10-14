@@ -1,53 +1,26 @@
 package com.cqu.drs.repository;
 
 import com.cqu.drs.model.AuditLogEntry;
-import com.google.gson.reflect.TypeToken;
 
-import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Stores the audit log. Entries are only ever appended, never changed or
- * removed, so that the record of what was done during a response stays
- * trustworthy.
+ * Stores the audit log. Entries are appended and never amended, which is what
+ * allows the log to stand as evidence of who did what and when.
  */
-public class AuditRepository {
-
-    private static final String FILE_NAME = "audit.json";
-    private static final Type LIST_TYPE = new TypeToken<ArrayList<AuditLogEntry>>() { }.getType();
-
-    private final JsonDataStore store;
-
-    /**
-     * Creates a repository backed by the store given.
-     *
-     * @param store the data store to read and write through
-     */
-    public AuditRepository(JsonDataStore store) {
-        this.store = store;
-    }
+public interface AuditRepository {
 
     /**
      * Every entry held, oldest first.
      *
-     * @return the entries, or an empty list when none are held
+     * @return the entries
      */
-    public List<AuditLogEntry> findAll() {
-        return store.load(FILE_NAME, LIST_TYPE);
-    }
+    List<AuditLogEntry> findAll();
 
     /**
-     * Adds an entry to the end of the log.
+     * Appends one entry to the log.
      *
      * @param entry the entry to append
      */
-    public void append(AuditLogEntry entry) {
-        if (entry == null) {
-            throw new IllegalArgumentException("Cannot append a null audit entry.");
-        }
-        List<AuditLogEntry> all = findAll();
-        all.add(entry);
-        store.store(FILE_NAME, all);
-    }
+    void append(AuditLogEntry entry);
 }

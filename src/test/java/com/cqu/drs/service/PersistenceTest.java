@@ -17,6 +17,10 @@ import com.cqu.drs.repository.DepartmentRepository;
 import com.cqu.drs.repository.DisasterReportRepository;
 import com.cqu.drs.repository.JsonDataStore;
 import com.cqu.drs.repository.UserRepository;
+import com.cqu.drs.repository.JsonAuditRepository;
+import com.cqu.drs.repository.JsonDepartmentRepository;
+import com.cqu.drs.repository.JsonDisasterReportRepository;
+import com.cqu.drs.repository.JsonUserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,8 +53,8 @@ class PersistenceTest {
     @BeforeEach
     void setUp(@TempDir Path tempDir) {
         store = new JsonDataStore(tempDir);
-        reportRepository = new DisasterReportRepository(store);
-        auditService = new AuditService(new AuditRepository(store));
+        reportRepository = new JsonDisasterReportRepository(store);
+        auditService = new AuditService(new JsonAuditRepository(store));
         reportService = new ReportService(reportRepository, auditService);
     }
 
@@ -92,7 +96,7 @@ class PersistenceTest {
                 null, null, Severity.HIGH, null, null);
 
         // A second repository reads the file afresh, so nothing is cached in memory.
-        DisasterReportRepository reread = new DisasterReportRepository(store);
+        DisasterReportRepository reread = new JsonDisasterReportRepository(store);
         DisasterReport reloaded = reread.findByReference(reference).orElseThrow();
 
         assertNull(reloaded.getReporter());
@@ -107,7 +111,7 @@ class PersistenceTest {
         String reference = reportService.submitReport(DisasterType.EARTHQUAKE, ADDRESS,
                 -37.8136, 144.9631, Severity.SEVERE, "Building shook", reporter);
 
-        DisasterReport reloaded = new DisasterReportRepository(store)
+        DisasterReport reloaded = new JsonDisasterReportRepository(store)
                 .findByReference(reference).orElseThrow();
 
         assertEquals(DisasterType.EARTHQUAKE, reloaded.getType());
@@ -123,7 +127,7 @@ class PersistenceTest {
     @DisplayName("T88: a missing data file yields an empty list rather than an error")
     void loadEmptyWhenFileAbsent(@TempDir Path emptyDir) {
         DisasterReportRepository empty =
-                new DisasterReportRepository(new JsonDataStore(emptyDir));
+                new JsonDisasterReportRepository(new JsonDataStore(emptyDir));
         assertTrue(empty.findAll().isEmpty());
         assertEquals(0, empty.count());
     }
@@ -155,7 +159,7 @@ class PersistenceTest {
                 ResponseStatus.IN_PROGRESS, "Crew on site", "crew"));
         reportRepository.save(report);
 
-        DisasterReport reloaded = new DisasterReportRepository(store)
+        DisasterReport reloaded = new JsonDisasterReportRepository(store)
                 .findByReference("DR-0001").orElseThrow();
 
         assertTrue(reloaded.isAssessed());
@@ -170,12 +174,12 @@ class PersistenceTest {
     @Test
     @DisplayName("A staff account reloads as the right kind of user")
     void userSubclassSurvivesRoundTrip() {
-        UserRepository users = new UserRepository(store);
+        UserRepository users = new JsonUserRepository(store);
         AccountService accounts = new AccountService(users, auditService);
         accounts.create("crew", "Str0ngPass", "Fire Crew",
                 UserRole.RESPONDER, "DEP-01", "setup");
 
-        User reloaded = new UserRepository(store).findByUsername("crew").orElseThrow();
+        User reloaded = new JsonUserRepository(store).findByUsername("crew").orElseThrow();
         assertEquals(UserRole.RESPONDER, reloaded.getRole());
         assertTrue(reloaded.authenticate("Str0ngPass"),
                 "The stored password digest must still match after reloading.");
@@ -195,7 +199,7 @@ class PersistenceTest {
     @Test
     @DisplayName("The eight departments are seeded once and not again")
     void departmentsSeededOnce() {
-        DepartmentRepository departments = new DepartmentRepository(store);
+        DepartmentRepository departments = new JsonDepartmentRepository(store);
         assertTrue(departments.seedIfEmpty());
         assertEquals(8, departments.findAll().size());
         assertFalse(departments.seedIfEmpty(), "Seeding must not run a second time.");

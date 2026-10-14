@@ -7,6 +7,11 @@ import com.cqu.drs.repository.DepartmentRepository;
 import com.cqu.drs.repository.DisasterReportRepository;
 import com.cqu.drs.repository.JsonDataStore;
 import com.cqu.drs.repository.UserRepository;
+import com.cqu.drs.repository.JsonAlertRepository;
+import com.cqu.drs.repository.JsonAuditRepository;
+import com.cqu.drs.repository.JsonDepartmentRepository;
+import com.cqu.drs.repository.JsonDisasterReportRepository;
+import com.cqu.drs.repository.JsonUserRepository;
 import com.cqu.drs.service.AccountService;
 import com.cqu.drs.service.AlertService;
 import com.cqu.drs.service.AssessmentService;
@@ -43,11 +48,11 @@ public final class AppContext {
     private AppContext() {
         JsonDataStore store = new JsonDataStore();
 
-        DisasterReportRepository reportRepository = new DisasterReportRepository(store);
-        UserRepository userRepository = new UserRepository(store);
-        AlertRepository alertRepository = new AlertRepository(store);
-        AuditRepository auditRepository = new AuditRepository(store);
-        this.departmentRepository = new DepartmentRepository(store);
+        DisasterReportRepository reportRepository = new JsonDisasterReportRepository(store);
+        UserRepository userRepository = new JsonUserRepository(store);
+        AlertRepository alertRepository = new JsonAlertRepository(store);
+        AuditRepository auditRepository = new JsonAuditRepository(store);
+        this.departmentRepository = new JsonDepartmentRepository(store);
 
         this.auditService = new AuditService(auditRepository);
         this.accountService = new AccountService(userRepository, auditService);

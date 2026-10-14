@@ -8,6 +8,8 @@ import com.cqu.drs.model.Severity;
 import com.cqu.drs.repository.AuditRepository;
 import com.cqu.drs.repository.DisasterReportRepository;
 import com.cqu.drs.repository.JsonDataStore;
+import com.cqu.drs.repository.JsonAuditRepository;
+import com.cqu.drs.repository.JsonDisasterReportRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,8 +45,8 @@ class NearbyReportsTest {
     void setUp(@TempDir Path tempDir) {
         JsonDataStore store = new JsonDataStore(tempDir);
         reportService = new ReportService(
-                new DisasterReportRepository(store),
-                new AuditService(new AuditRepository(store)));
+                new JsonDisasterReportRepository(store),
+                new AuditService(new JsonAuditRepository(store)));
     }
 
     /**

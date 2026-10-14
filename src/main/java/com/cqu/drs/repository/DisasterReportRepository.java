@@ -1,79 +1,47 @@
 package com.cqu.drs.repository;
 
 import com.cqu.drs.model.DisasterReport;
-import com.google.gson.reflect.TypeToken;
 
-import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Stores disaster reports. A report is saved with its assessment, its response
- * tasks and its alerts nested inside it, because none of those has meaning
- * apart from the report they belong to.
+ * Stores disaster reports. A report is kept with its assessment, its response
+ * tasks and its alerts attached, because none of those has meaning apart from
+ * the report they belong to.
+ *
+ * This is an interface so that the storage technology can be replaced without
+ * touching the services above it. DRS-Initial stored reports as JSON files;
+ * DRS-Enhanced stores them in MySQL, and the services are unaware of either.
  */
-public class DisasterReportRepository {
-
-    private static final String FILE_NAME = "reports.json";
-    private static final Type LIST_TYPE = new TypeToken<ArrayList<DisasterReport>>() { }.getType();
-
-    private final JsonDataStore store;
+public interface DisasterReportRepository {
 
     /**
-     * Creates a repository backed by the store given.
+     * Every report held.
      *
-     * @param store the data store to read and write through
+     * @return the reports
      */
-    public DisasterReportRepository(JsonDataStore store) {
-        this.store = store;
-    }
-
-    /**
-     * Every report held, in the order they were stored.
-     *
-     * @return the reports, or an empty list when none are held
-     */
-    public List<DisasterReport> findAll() {
-        return store.load(FILE_NAME, LIST_TYPE);
-    }
+    List<DisasterReport> findAll();
 
     /**
      * Finds one report by its reference number.
      *
-     * @param reference the reference to look for
-     * @return the report, or an empty Optional when no report has that reference
+     * @param reference the reference to look for, of the form DR-nnnn
+     * @return the report, or an empty Optional when none matches
      */
-    public Optional<DisasterReport> findByReference(String reference) {
-        if (reference == null) {
-            return Optional.empty();
-        }
-        return findAll().stream()
-                .filter(r -> reference.equals(r.getReferenceNumber()))
-                .findFirst();
-    }
+    Optional<DisasterReport> findByReference(String reference);
 
     /**
-     * Saves a report, replacing any earlier version of the same report.
+     * Saves a report, replacing any earlier version of the same one.
      *
      * @param report the report to save
      */
-    public void save(DisasterReport report) {
-        if (report == null) {
-            throw new IllegalArgumentException("Cannot save a null report.");
-        }
-        List<DisasterReport> all = findAll();
-        all.removeIf(r -> report.getReferenceNumber().equals(r.getReferenceNumber()));
-        all.add(report);
-        store.store(FILE_NAME, all);
-    }
+    void save(DisasterReport report);
 
     /**
-     * The number of reports held, used when generating the next reference.
+     * How many reports are held, used to generate the next reference number.
      *
-     * @return the count of stored reports
+     * @return the count
      */
-    public int count() {
-        return findAll().size();
-    }
+    int count();
 }
