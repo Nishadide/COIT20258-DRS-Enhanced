@@ -1,8 +1,13 @@
 package com.cqu.drs.db;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -36,10 +41,35 @@ class DatabaseConfigTest {
             DatabaseConfig.KEY_CREATE_SCHEMA
     };
 
-    @AfterEach
-    void clearOverrides() {
+    /** Whatever these keys held before this class started interfering. */
+    private final Map<String, String> originalValues = new LinkedHashMap<>();
+
+    @BeforeEach
+    void rememberOriginalValues() {
+        originalValues.clear();
         for (String key : KEYS_USED) {
-            System.clearProperty(key);
+            originalValues.put(key, System.getProperty(key));
+        }
+    }
+
+    @AfterEach
+    void restoreOriginalValues() {
+        // Restored, not cleared. Clearing them was a defect: a developer
+        // running the suite with -Ddrs.db.password=... had those settings
+        // wiped by this class, and every test that ran afterwards in the same
+        // JVM silently fell back to db.properties. The database tests then
+        // reported that no database was reachable, which was true only
+        // because this class had removed the credentials.
+        //
+        // A test is entitled to change global state. It is not entitled to
+        // hand back a different one than it was given.
+        for (String key : KEYS_USED) {
+            String original = originalValues.get(key);
+            if (original == null) {
+                System.clearProperty(key);
+            } else {
+                System.setProperty(key, original);
+            }
         }
     }
 
@@ -53,6 +83,9 @@ class DatabaseConfigTest {
     @Test
     @DisplayName("T107: with no override, the value comes from db.properties")
     void fileSuppliesValueWhenNoOverride() {
+        assumeNotOverridden(DatabaseConfig.KEY_DB_HOST);
+        assumeNotOverridden(DatabaseConfig.KEY_DB_NAME);
+
         // db.properties on the test classpath sets these, so the defaults
         // built into the class are not what is being read here.
         DatabaseConfig config = DatabaseConfig.load();
@@ -66,7 +99,33 @@ class DatabaseConfigTest {
         // A standard MySQL installation may have no root password. If a blank
         // value fell through to a default the application would send the
         // wrong credentials and the failure would look like a wrong password.
+        //
+        // Skipped when the password has been overridden, which is the normal
+        // state on a developer's machine: the whole point of the override is
+        // that a real password never goes in the file, so anyone following
+        // that advice has DRS_DB_PASSWORD set. Asserting the file's value
+        // regardless would have failed the build for doing the right thing.
+        assumeNotOverridden(DatabaseConfig.KEY_DB_PASSWORD);
+
         assertEquals("", DatabaseConfig.load().databasePassword());
+    }
+
+    /**
+     * Skips a test that reads a value from db.properties when that value has
+     * been overridden, because the test would then be measuring the override
+     * rather than the file.
+     *
+     * @param key the property key the test depends on
+     */
+    private static void assumeNotOverridden(String key) {
+        String environmentVariable = key.toUpperCase().replace('.', '_');
+        boolean overridden = System.getProperty(key) != null
+                || System.getenv(environmentVariable) != null;
+
+        Assumptions.assumeTrue(!overridden,
+                key + " is overridden by a system property or by "
+                        + environmentVariable + ", so this test, which checks what "
+                        + "db.properties supplies, does not apply here.");
     }
 
     @Test
