@@ -1,4 +1,4 @@
-package com.cqu.drs.repository;
+package com.cqu.drs.json;
 
 import com.cqu.drs.model.DepartmentResponder;
 import com.cqu.drs.model.EmergencyCoordinator;

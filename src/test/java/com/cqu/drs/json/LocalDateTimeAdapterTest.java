@@ -1,4 +1,4 @@
-package com.cqu.drs.repository;
+package com.cqu.drs.json;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

@@ -1,6 +1,6 @@
 package com.cqu.drs.protocol;
 
-import com.cqu.drs.repository.LocalDateTimeAdapter;
+import com.cqu.drs.json.LocalDateTimeAdapter;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
