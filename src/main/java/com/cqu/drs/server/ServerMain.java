@@ -3,9 +3,18 @@ package com.cqu.drs.server;
 import com.cqu.drs.db.ConnectionFactory;
 import com.cqu.drs.db.DatabaseConfig;
 import com.cqu.drs.db.SchemaInitialiser;
+import com.cqu.drs.repository.DisasterReportRepository;
+import com.cqu.drs.repository.JsonAuditRepository;
+import com.cqu.drs.repository.JsonDataStore;
+import com.cqu.drs.repository.MySqlDisasterReportRepository;
 import com.cqu.drs.repository.MySqlRequestLogRepository;
 import com.cqu.drs.repository.RequestLogRepository;
+import com.cqu.drs.server.handler.FindReportByReferenceHandler;
 import com.cqu.drs.server.handler.PingHandler;
+import com.cqu.drs.server.handler.SubmitReportHandler;
+import com.cqu.drs.service.AuditService;
+import com.cqu.drs.service.ReportOperations;
+import com.cqu.drs.service.ReportService;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -70,8 +79,30 @@ public final class ServerMain {
         RequestLogRepository requestLog = new MySqlRequestLogRepository(connections);
         SessionRegistry sessions = new SessionRegistry();
 
+        // The data tier, as the server sees it. These are the MySQL
+        // implementations; the client has none of this.
+        DisasterReportRepository reportRepository =
+                new MySqlDisasterReportRepository(connections);
+
+        // The audit trail is still written to a JSON file on the server. The
+        // MySQL audit repository, with the hash chain the schema already
+        // provides for, is the next commit's work. Keeping it here rather than
+        // leaving audit entries unwritten means nothing is lost in the
+        // meantime, and the file is on the server where it belongs rather than
+        // on each client.
+        AuditService auditService = new AuditService(
+                new JsonAuditRepository(new JsonDataStore()));
+
+        // The same ReportService the desktop application used in Assessment 2,
+        // unchanged, now running on the server with a MySQL repository behind
+        // it. That it needed no modification is the point: the business rules
+        // were never tied to how the data was stored.
+        ReportOperations reportService = new ReportService(reportRepository, auditService);
+
         RequestDispatcher dispatcher = new RequestDispatcher(sessions, requestLog)
-                .register(new PingHandler());
+                .register(new PingHandler())
+                .register(new SubmitReportHandler(reportService))
+                .register(new FindReportByReferenceHandler(reportService));
 
         DrsServer server = new DrsServer(config.serverPort(), config.serverThreads(), dispatcher);
 

@@ -39,6 +39,7 @@ public final class DatabaseConfig {
     public static final String KEY_DB_PASSWORD = "drs.db.password";
     public static final String KEY_DB_PARAMS = "drs.db.params";
     public static final String KEY_CREATE_SCHEMA = "drs.db.createSchema";
+    public static final String KEY_CLIENT_MODE = "drs.client.mode";
 
     private static final String DEFAULT_SERVER_HOST = "localhost";
     private static final int DEFAULT_SERVER_PORT = 5050;
@@ -200,6 +201,41 @@ public final class DatabaseConfig {
 
     public boolean createSchemaOnStartup() {
         return getBoolean(KEY_CREATE_SCHEMA, true);
+    }
+
+    /**
+     * Whether the client reaches its data through the server or directly.
+     *
+     * Two values are accepted. "local" is the Assessment 2 arrangement, where
+     * the application holds its own repositories and needs nothing else
+     * running. "remote" is the three-tier arrangement, where the client holds
+     * no repositories and asks the server for everything.
+     *
+     * The setting exists because the move from one to the other is made one
+     * operation at a time. Without it, the application would have to be broken
+     * for as long as the move took, and nobody could demonstrate anything in
+     * between.
+     *
+     * @return true when the client should talk to the server
+     */
+    public boolean isRemoteClient() {
+        return "remote".equalsIgnoreCase(clientMode());
+    }
+
+    /**
+     * The client mode as written, for reporting in a log or a status line.
+     *
+     * @return "local" or "remote"
+     * @throws IllegalStateException when the value is neither, because
+     *         starting in the wrong mode is worse than refusing to start
+     */
+    public String clientMode() {
+        String mode = get(KEY_CLIENT_MODE, "local");
+        if (!"local".equalsIgnoreCase(mode) && !"remote".equalsIgnoreCase(mode)) {
+            throw new IllegalStateException(KEY_CLIENT_MODE
+                    + " must be either local or remote, but was \"" + mode + "\".");
+        }
+        return mode.toLowerCase();
     }
 
     /**

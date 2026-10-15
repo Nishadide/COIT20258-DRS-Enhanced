@@ -216,3 +216,51 @@ which those assumptions have to be re-examined rather than inherited.
 **GitHub issue:** #
 
 ---
+
+### 2026-10-15 Technical: the protocol locked the public out of checking their own report
+
+**Who hit it:** Nishadi, starting the client for the walking skeleton.
+
+**What happened:** Version 1.0 of PROTOCOL.md listed `report.findByReference`
+as requiring a session. Writing the client meant reading the welcome screen,
+which offers "Check a report" alongside "Report a disaster", with no sign-in
+between. The case study is the reason: a person who reports a disaster and
+leaves no details has nothing afterwards but the reference number.
+
+Had the protocol been implemented as written, a member of the public would have
+been able to report a disaster and then been refused when they tried to find
+out what had happened to it. Nothing would have appeared broken. The server
+would have answered correctly according to its specification, and the
+specification was wrong.
+
+**What was tried:** Nothing to diagnose. The fault was in deciding which of the
+two documents was right, and the case study settles that: the capability is
+required, so the protocol is what has to change.
+
+**What fixed it:** `report.findByReference` is now public, in the enum, in the
+document, and in the test that asserts exactly which operations are public.
+PROTOCOL.md is at version 1.1 with the change and the reason recorded, so
+anyone reading it later sees that the earlier reading was considered and
+rejected rather than overlooked.
+
+Being public, the operation returns whatever report the reference names, and a
+reference of the form DR-0001 is guessable. That is acceptable for what a
+report carries and would not be for anything more sensitive, so the limitation
+and its remedy, a token issued to the reporter when the report is lodged, are
+written down rather than left to be discovered by whoever reads the code next.
+
+**What it changed about how the work is done:** The protocol was frozen before
+any client was written, and the gate did its job here in a way worth noticing.
+The error was found by one person reading the document against the application
+it described, days before two other members built clients against it. Had it
+been found after their screens were written, the fix would have been a protocol
+change invalidating work already done by people who were not in the room when
+it was agreed.
+
+The specification is not evidence. It is a claim about what the system should
+do, and it is checked against the case study and the existing application
+rather than assumed correct because it was written down first.
+
+**GitHub issue:** #
+
+---

@@ -33,11 +33,24 @@ class OperationTest {
             }
         }
 
-        // report.submit is the only public operation that writes, and it is
-        // public because the case study requires a member of the public to
-        // lodge a report without an account. Anything else appearing here is a
-        // hole in the access control.
-        assertEquals(Set.of("auth.login", "server.ping", "report.submit"),
+        // Four, and each one is deliberate:
+        //
+        //   auth.login              nobody has a session before signing in
+        //   server.ping             a client checks the server is reachable
+        //                           before offering a sign-in screen
+        //   report.submit           the case study requires the public to
+        //                           report a disaster without an account, and
+        //                           this is the only public operation that
+        //                           writes
+        //   report.findByReference  someone who reported a disaster and left
+        //                           no details must be able to follow it up,
+        //                           holding only the reference
+        //
+        // Anything else appearing here is a hole in the access control, so
+        // this test is written to fail when the set changes rather than to
+        // check each one individually.
+        assertEquals(Set.of("auth.login", "server.ping",
+                        "report.submit", "report.findByReference"),
                 publicOperations,
                 "A new public operation must be a deliberate decision, not an "
                         + "accident of copying a nearby constant.");

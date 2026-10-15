@@ -47,7 +47,22 @@ public enum Operation {
      * report without an account. It is the only public operation that writes.
      */
     REPORT_SUBMIT("report.submit", Access.PUBLIC),
-    REPORT_FIND_BY_REFERENCE("report.findByReference", Access.ANY_SIGNED_IN),
+    /**
+     * Public, and version 1.0 of the protocol had this wrong.
+     *
+     * It was first written as requiring a session, which contradicted the
+     * application it was describing: the welcome screen offers "Check a
+     * report" without signing in, because the case study requires someone who
+     * reported a disaster and left no details to be able to follow it up. The
+     * reference is the only thing they hold.
+     *
+     * The reference is of the form DR-0001 and so is guessable, which means
+     * this operation hands out whatever reference it is given. That is
+     * acceptable for what a report carries and would not be for anything more
+     * sensitive. The limitation and its remedy are recorded in the report
+     * rather than left to be discovered.
+     */
+    REPORT_FIND_BY_REFERENCE("report.findByReference", Access.PUBLIC),
     REPORT_FIND_ALL("report.findAll", Access.of(UserRole.COORDINATOR, UserRole.ADMINISTRATOR)),
     REPORT_NEARBY("report.nearby", Access.of(UserRole.COORDINATOR, UserRole.ADMINISTRATOR)),
 

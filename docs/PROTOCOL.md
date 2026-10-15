@@ -139,13 +139,25 @@ again.
 | Operation | Role | Payload | Returns |
 | --- | --- | --- | --- |
 | `report.submit` | Public | `type`, `address`, `latitude`, `longitude`, `severity`, `description`, `reporterName`, `contactNumber` | `referenceNumber` |
-| `report.findByReference` | Any | `reference` | `report` or `NOT_FOUND` |
+| `report.findByReference` | Public | `reference` | `report` or `NOT_FOUND` |
 | `report.findAll` | Coordinator, Administrator | none | `reports` |
 | `report.nearby` | Coordinator, Administrator | `reference`, `radiusKm` | `reports` with `distanceKm` |
 
 `report.submit` is public because the case study requires a member of the
 public to lodge a report without an account. It is the only public operation
 that writes.
+
+`report.findByReference` is public for the same reason seen from the other
+side. Someone who reported a disaster and left no details has nothing but the
+reference, and the welcome screen offers to check a report without signing in.
+Version 1.0 of this document required a session for it, which contradicted the
+application it was describing; version 1.1 corrects that.
+
+Being public, it returns whatever report the reference identifies, and a
+reference of the form DR-0001 is guessable. That is acceptable for the
+information a report carries and would not be for anything more sensitive. The
+remedy, if it were needed, is a token issued to the reporter when the report is
+lodged and required alongside the reference.
 
 ### 5.3 Assessment
 
@@ -436,3 +448,4 @@ without editing a tracked file.
 | Version | Date | Change |
 | --- | --- | --- |
 | 1.0 | 2026-10-15 | First frozen version. Operation set derived from the 27 service calls made by the 9 Assessment 2 controllers |
+| 1.1 | 2026-10-15 | `report.findByReference` corrected from requiring a session to public. Version 1.0 contradicted the application: the welcome screen offers to check a report without signing in, as the case study requires. Agreed by the team before the client was written, so no client work depended on the earlier reading |

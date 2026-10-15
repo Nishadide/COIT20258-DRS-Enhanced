@@ -1,5 +1,8 @@
 package com.cqu.drs;
 
+import com.cqu.drs.client.DrsClient;
+import com.cqu.drs.client.RemoteReportService;
+import com.cqu.drs.db.DatabaseConfig;
 import com.cqu.drs.model.User;
 import com.cqu.drs.repository.AlertRepository;
 import com.cqu.drs.repository.AuditRepository;
@@ -18,6 +21,7 @@ import com.cqu.drs.service.AssessmentService;
 import com.cqu.drs.service.AuditService;
 import com.cqu.drs.service.AuthenticationService;
 import com.cqu.drs.service.CoordinationService;
+import com.cqu.drs.service.ReportOperations;
 import com.cqu.drs.service.ReportService;
 import com.cqu.drs.model.UserRole;
 
@@ -42,8 +46,10 @@ public final class AppContext {
     private final AuditService auditService;
     private final AuthenticationService authenticationService;
     private final CoordinationService coordinationService;
-    private final ReportService reportService;
+    private final ReportOperations reportService;
     private final DepartmentRepository departmentRepository;
+    private final DrsClient client;
+    private final String clientMode;
 
     private AppContext() {
         JsonDataStore store = new JsonDataStore();
@@ -57,7 +63,22 @@ public final class AppContext {
         this.auditService = new AuditService(auditRepository);
         this.accountService = new AccountService(userRepository, auditService);
         this.authenticationService = new AuthenticationService(userRepository, auditService);
-        this.reportService = new ReportService(reportRepository, auditService);
+        DatabaseConfig config = DatabaseConfig.load();
+        this.clientMode = config.clientMode();
+
+        if (config.isRemoteClient()) {
+            // Three-tier. The client holds no repository for reports: it asks
+            // the server, which owns the database. The controllers call the
+            // same methods either way, because both sides of this choice
+            // implement ReportOperations.
+            this.client = new DrsClient(config);
+            this.reportService = new RemoteReportService(client);
+        } else {
+            // The DRS-Initial arrangement, kept as the default so that the
+            // application starts whether or not a server is running.
+            this.client = null;
+            this.reportService = new ReportService(reportRepository, auditService);
+        }
         this.assessmentService = new AssessmentService(reportRepository, auditService);
         this.coordinationService = new CoordinationService(
                 reportRepository, departmentRepository, auditService);
@@ -118,8 +139,39 @@ public final class AppContext {
         return coordinationService;
     }
 
-    public ReportService getReportService() {
+    public ReportOperations getReportService() {
         return reportService;
+    }
+
+    /**
+     * How this client reaches its data, for the window title and the log.
+     *
+     * @return "local" or "remote"
+     */
+    public String getClientMode() {
+        return clientMode;
+    }
+
+    /**
+     * The connection to the server, or null when running locally.
+     *
+     * @return the client, or null
+     */
+    public DrsClient getClient() {
+        return client;
+    }
+
+    /**
+     * Closes anything that must not be left open when the window closes.
+     *
+     * Without this the socket is left to the operating system to tidy up when
+     * the process ends, and the server sees a connection that was never closed
+     * rather than one that ended.
+     */
+    public void shutdown() {
+        if (client != null) {
+            client.close();
+        }
     }
 
     public DepartmentRepository getDepartmentRepository() {
