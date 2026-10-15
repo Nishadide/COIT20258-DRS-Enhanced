@@ -1,0 +1,136 @@
+@startuml
+' DRS-Enhanced three-tier architecture.
+' Every component named here exists in the source, and the dependency
+' directions were extracted from the import statements rather than recalled.
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 15
+skinparam roundCorner 8
+skinparam linetype ortho
+skinparam nodesep 25
+skinparam ranksep 45
+skinparam ArrowColor #37474F
+skinparam ArrowFontSize 14
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #BFA14A
+skinparam NoteFontSize 13
+skinparam NoteFontName "DejaVu Sans"
+
+skinparam rectangle {
+  BorderColor #546E7A
+  BackgroundColor #FFFFFF
+  FontSize 15
+}
+skinparam package {
+  BorderColor #263238
+  BackgroundColor #FAFAFA
+  FontSize 17
+  FontStyle bold
+}
+
+title DRS-Enhanced: three-tier architecture\nCOIT20258 Assessment 3
+
+' ==========================================================================
+package "TIER 1   Presentation   —   JavaFX client process" as T1 #E3F2FD {
+  rectangle "**com.cqu.drs.controller (10)** and the 10 FXML views\n\nWelcome   ReportDisaster   TrackReport   Login   Dashboard\nAssessment   Coordination   Alert   DepartmentResponse\nAccountManagement\n\nunchanged from Assessment 2" as CTRL
+  rectangle "**com.cqu.drs (3)**\nMainApp     Navigator     AppContext\n\nAppContext builds the object graph once and decides,\nfrom drs.client.mode, whether the screens talk to a\nlocal service or to the server" as CTX
+  rectangle "**com.cqu.drs.client (3)**\n\nRemoteReportService\nimplements ReportOperations by asking the server\n\nDrsClient\none socket held for the session, signs every request\n\nServerUnavailableException" as CLIENT
+}
+
+' ==========================================================================
+package "TIER 2   Application   —   multi-threaded server process" as T2 #E8F5E9 {
+  rectangle "**com.cqu.drs.server (7)**\nServerMain      checks the database, then opens the port\nDrsServer        accept loop on its own thread, fixed pool of 32\nClientHandler   one per connected client, holds nothing shared" as SERVER
+  rectangle "**RequestDispatcher**   and   **SessionRegistry / Session**\n\nevery request passes the same checks in the same order:\nrecord and claim  →  operation  →  session  →  role\n→  signature  →  handler" as DISPATCH
+  rectangle "**com.cqu.drs.server.handler (3)**\nSubmitReportHandler   FindReportByReferenceHandler   PingHandler\none class per operation, so each member adds their own\nwithout editing a file the others are editing" as HANDLERS
+  rectangle "**com.cqu.drs.service (9)**\nReportService   AssessmentService   CoordinationService\nAlertService   AccountService   AuthenticationService\nAuditService   ReportValidation   ReportOperations «interface»\n\ncarried over from Assessment 2 unchanged" as SERVICES
+}
+
+' ==========================================================================
+package "TIER 3   Data" as T3 #FFF3E0 {
+  rectangle "**com.cqu.drs.repository (16)**\n\n**«interface»**\nDisasterReportRepository   UserRepository   AlertRepository\nDepartmentRepository   AuditRepository   RequestLogRepository\n\n**MySQL implementations**\nMySqlDisasterReportRepository   MySqlRequestLogRepository\nparameter markers throughout, one transaction per aggregate\n\n**JSON implementations**\nthe five DRS-Initial stores, still passing their inherited tests" as REPO
+  rectangle "**com.cqu.drs.db (7)**\n\nConnectionFactory\njava.sql only: the driver is needed to run, never to compile\n\nDatabaseConfig\nsystem property → environment → db.properties → default\n\nSchemaInitialiser   CoreSchema   SchemaModule\nSchemaModules   SchemaTool\ncreates the schema on startup; a second run changes nothing" as DB
+  database "**MySQL 8.0**   drs_enhanced\n\ndisaster_reports   reporters   assessments   response_tasks\nstatus_updates   alerts   users   departments\naudit_log   request_log   schema_metadata\n\n11 tables, InnoDB, utf8mb4" as MYSQL #FFE0B2
+}
+
+' ==========================================================================
+package "Shared by both processes   —   compiled into the client and the server alike" as SHARED #ECEFF1 {
+  rectangle "**com.cqu.drs.protocol (8)**\nOperation   the 29 operations and the role permitted each\nRequest   Response   ResponseStatus   ErrorCode\nProtocolCodec   one JSON object per line\nRequestSigner   HMAC-SHA256 over the canonical request" as PROTO
+  rectangle "**com.cqu.drs.model (21)**\nDisasterReport   Assessment   ResponseTask   StatusUpdate\nAlert   Department   Reporter   Location   AuditLogEntry\nUser and its three roles   seven enumerations   DrsConstants\n\ndepends on nothing else in the system" as MODEL
+  rectangle "**com.cqu.drs.json (2)**\nLocalDateTimeAdapter   UserAdapter\n\nused by the protocol and by the JSON stores alike, so the\nclient depends on no part of the data tier" as JSONADAPT
+}
+
+' ==========================================================================
+' The path one request takes, straight down the page.
+' ==========================================================================
+CTRL --> CTX
+CTX --> CLIENT
+
+CLIENT -[#C62828,thickness=5]-> SERVER : "   **TCP socket, port 5050**\n   one JSON object per line, UTF-8   "
+
+SERVER --> DISPATCH
+DISPATCH --> HANDLERS
+HANDLERS --> SERVICES
+SERVICES --> REPO
+REPO --> DB
+
+DB -[#E65100,thickness=5]-> MYSQL : "   **JDBC**\n   MySQL Connector/J 8.4.0   "
+
+' Keeps the shared packages below the stack without dragging the
+' layout sideways: no component arrows are drawn to them.
+MYSQL -[hidden]-> PROTO
+PROTO -[hidden]right-> MODEL
+MODEL -[hidden]right-> JSONADAPT
+
+note right of CTRL
+  <b>What three tiers cost the screens</b>
+  Nothing. ReportDisasterController and
+  TrackReportController are unchanged from
+  Assessment 2. They call validate,
+  submitReport and findByReference on an
+  interface, and cannot tell whether a socket
+  is involved. That is what keeps MVC intact
+  across the split.
+end note
+
+note right of SERVER
+  <b>Why thread per client</b>
+  A bounded pool, not a cached one: a client
+  opening connections in a loop would otherwise
+  create a thread each until memory ran out.
+  Handlers share no mutable state. Two clients
+  competing for one row are ordered by a database
+  transaction rather than by a Java lock, because
+  a lock protects one server process only, and a
+  design that is correct only while exactly one
+  server runs is not a three-tier design.
+end note
+
+note right of DISPATCH
+  <b>Section 2.5 security, enforced in one place</b>
+  <b>Access rights</b>  the role comes from the session,
+  never from the request, and is checked here so
+  that no handler can forget.
+  <b>Time stamping</b>  sentAt from the client,
+  receivedAt and respondedAt from the server;
+  all three are stored in request_log.
+  <b>Non-repudiation</b>  the HMAC is stored with the
+  request, and the unique key on request_id
+  refuses a replay even after a restart.
+  <b>Encryption</b>  sensitive fields are encrypted
+  before insert and decrypted after select.
+end note
+
+note right of REPO
+  <b>Why the interfaces exist</b>
+  The services were written against these in
+  DRS-Initial, when only the JSON versions
+  existed. Adding MySQL took one new class per
+  store and changed nothing above the data tier,
+  which is the claim the Assessment 2 report made
+  about its own design, now used rather than
+  asserted.
+end note
+
+@enduml
