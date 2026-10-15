@@ -62,7 +62,7 @@ public class AlertController implements Initializable {
         loadReport();
     }
 
-    private void configureColumnsk() {
+    private void configureColumns() {
         alertTypeColumn.setCellValueFactory(cell ->
                 new SimpleStringProperty(cell.getValue().getType().getLabel()));
         alertAreaColumn.setCellValueFactory(cell ->
