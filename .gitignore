@@ -23,3 +23,9 @@
 hs_err_pid*
 replay_pid*
 /target/
+# Application data written at run time. Contains the JSON stores, including
+# user records, and must never be committed.
+data/
+
+# NetBeans per-project run configuration
+nbactions.xml
