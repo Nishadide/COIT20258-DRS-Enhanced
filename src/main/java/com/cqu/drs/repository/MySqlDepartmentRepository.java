@@ -2,6 +2,7 @@ package com.cqu.drs.repository;
 
 import com.cqu.drs.db.ConnectionFactory;
 import com.cqu.drs.model.Department;
+import com.cqu.drs.model.SeedData;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -48,24 +49,6 @@ public final class MySqlDepartmentRepository implements DepartmentRepository {
                                     contact_email = VALUES(contact_email),
                                     available = VALUES(available)""";
 
-    /**
-     * The eight departments, exactly as DRS-Initial seeded them.
-     *
-     * Kept identical so that data migrated from Assessment 2 refers to
-     * departments that exist, with the identifiers its response tasks already
-     * use.
-     */
-    private static final String[][] SEED = {
-        {"DEP-01", "Fire and Emergency", "dispatch@fire.gov.au"},
-        {"DEP-02", "Hospital", "emergency@health.gov.au"},
-        {"DEP-03", "Electricity", "faults@power.gov.au"},
-        {"DEP-04", "Transportation", "control@transport.gov.au"},
-        {"DEP-05", "Waste Management", "cleanup@waste.gov.au"},
-        {"DEP-06", "Water Supply", "incidents@water.gov.au"},
-        {"DEP-07", "Schools", "safety@education.gov.au"},
-        {"DEP-08", "Law Enforcement", "operations@police.gov.au"}
-    };
-
     private final ConnectionFactory connections;
 
     /**
@@ -102,11 +85,14 @@ public final class MySqlDepartmentRepository implements DepartmentRepository {
             }
 
             try (PreparedStatement statement = connection.prepareStatement(UPSERT)) {
-                for (String[] row : SEED) {
-                    statement.setString(1, row[0]);
-                    statement.setString(2, row[1]);
-                    statement.setString(3, row[2]);
-                    statement.setBoolean(4, true);
+                // The one list, in SeedData. This store used to hold its own
+                // copy and the JSON store held another, which meant the
+                // submitted SQL script would have been a third.
+                for (Department department : SeedData.departments()) {
+                    statement.setString(1, department.getDepartmentId());
+                    statement.setString(2, department.getName());
+                    statement.setString(3, department.getContactEmail());
+                    statement.setBoolean(4, department.isAvailable());
                     statement.addBatch();
                 }
                 statement.executeBatch();

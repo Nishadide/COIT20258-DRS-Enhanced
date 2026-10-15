@@ -208,3 +208,37 @@ CREATE TABLE IF NOT EXISTS request_log (
   CONSTRAINT chk_request_log_status CHECK (status IN ('OK', 'ERROR'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- ---------------------------------------------------------------
+-- Reference data
+--
+-- The rows a usable system starts with. Every statement is an
+-- upsert, so running this script twice, or running it over a
+-- database the application has already seeded, changes nothing.
+-- ---------------------------------------------------------------
+
+INSERT INTO departments (department_id, name, contact_email, available)
+VALUES
+  ('DEP-01', 'Fire and Emergency', 'dispatch@fire.gov.au', TRUE),
+  ('DEP-02', 'Hospital', 'emergency@health.gov.au', TRUE),
+  ('DEP-03', 'Electricity', 'faults@power.gov.au', TRUE),
+  ('DEP-04', 'Transportation', 'control@transport.gov.au', TRUE),
+  ('DEP-05', 'Waste Management', 'cleanup@waste.gov.au', TRUE),
+  ('DEP-06', 'Water Supply', 'incidents@water.gov.au', TRUE),
+  ('DEP-07', 'Schools', 'safety@education.gov.au', TRUE),
+  ('DEP-08', 'Law Enforcement', 'operations@police.gov.au', TRUE)
+ON DUPLICATE KEY UPDATE name = VALUES(name),
+                        contact_email = VALUES(contact_email);
+
+-- The documented starting accounts. Change these passwords before
+-- the system is used for anything real: they are published in the
+-- report so that the application can be signed into.
+INSERT INTO users
+  (user_id, username, password_hash, password_salt, password_algorithm,
+   full_name, role, active, must_change_password, department_id, coordinator_id)
+VALUES
+  ('seed-admin', 'admin', 'JAvlGPq9JyTdtvBO6x2llnRI1+gxwIyPqCKAn3THIKk=', NULL, 'SHA-256', 'System Administrator', 'ADMINISTRATOR', TRUE, TRUE, NULL, NULL),
+  ('seed-coordinator', 'coordinator', 'jGOi/CsU2K5vnQvy4sQiesLcS9hHaOElkiaww9hPHGU=', NULL, 'SHA-256', 'Emergency Coordinator', 'COORDINATOR', TRUE, TRUE, NULL, 'EC-001'),
+  ('seed-fire.crew', 'fire.crew', 'PHThxyrP54QemEcGf9ME8fBxW78Zc1s2fge7KhaYWbc=', NULL, 'SHA-256', 'Fire and Emergency Crew', 'RESPONDER', TRUE, TRUE, 'DEP-01', NULL)
+ON DUPLICATE KEY UPDATE full_name = VALUES(full_name),
+                        role = VALUES(role);
+

@@ -8,7 +8,7 @@ import com.cqu.drs.migration.JsonMigrationSource;
 import com.cqu.drs.migration.MigrationLedger;
 import com.cqu.drs.migration.MigrationSource;
 import com.cqu.drs.migration.MySqlMigrationLedger;
-import com.cqu.drs.model.UserRole;
+import com.cqu.drs.model.SeedData;
 import com.cqu.drs.protocol.Operation;
 import com.cqu.drs.repository.AlertRepository;
 import com.cqu.drs.repository.AuditRepository;
@@ -325,13 +325,17 @@ public final class ServerMain {
         if (!accountService.findAll().isEmpty()) {
             return;
         }
-        accountService.create("admin", "admin123", "System Administrator",
-                UserRole.ADMINISTRATOR, null, "system");
-        accountService.create("coordinator", "coord123", "Emergency Coordinator",
-                UserRole.COORDINATOR, null, "system");
-        accountService.create("fire.crew", "crew1234", "Fire and Emergency Crew",
-                UserRole.RESPONDER, "DEP-01", "system");
-        log("Seeded the three starting accounts: admin, coordinator, fire.crew.");
+        StringBuilder names = new StringBuilder();
+        for (SeedData.StartingAccount account : SeedData.startingAccounts()) {
+            accountService.create(account.username(), account.plainPassword(),
+                    account.fullName(), account.role(), account.departmentId(),
+                    "system");
+            if (names.length() > 0) {
+                names.append(", ");
+            }
+            names.append(account.username());
+        }
+        log("Seeded the starting accounts: " + names + ".");
     }
 
     private static void keepRunning() {

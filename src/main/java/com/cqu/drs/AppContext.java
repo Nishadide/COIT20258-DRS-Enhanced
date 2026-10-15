@@ -11,7 +11,7 @@ import com.cqu.drs.client.RemoteDepartmentService;
 import com.cqu.drs.client.RemoteReportService;
 import com.cqu.drs.db.DatabaseConfig;
 import com.cqu.drs.model.User;
-import com.cqu.drs.model.UserRole;
+import com.cqu.drs.model.SeedData;
 import com.cqu.drs.repository.AlertRepository;
 import com.cqu.drs.repository.AuditRepository;
 import com.cqu.drs.repository.DepartmentRepository;
@@ -161,12 +161,11 @@ public final class AppContext {
         if (!accounts.findAll().isEmpty()) {
             return;
         }
-        accounts.create("admin", "admin123", "System Administrator",
-                UserRole.ADMINISTRATOR, null, "system");
-        accounts.create("coordinator", "coord123", "Emergency Coordinator",
-                UserRole.COORDINATOR, null, "system");
-        accounts.create("fire.crew", "crew1234", "Fire and Emergency Crew",
-                UserRole.RESPONDER, "DEP-01", "system");
+        for (SeedData.StartingAccount account : SeedData.startingAccounts()) {
+            accounts.create(account.username(), account.plainPassword(),
+                    account.fullName(), account.role(), account.departmentId(),
+                    "system");
+        }
     }
 
     public AccountOperations getAccountService() {

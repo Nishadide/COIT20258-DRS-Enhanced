@@ -1,6 +1,7 @@
 package com.cqu.drs.repository;
 
 import com.cqu.drs.model.Department;
+import com.cqu.drs.model.SeedData;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
@@ -50,16 +51,7 @@ public class JsonDepartmentRepository implements DepartmentRepository {
      * Writes the eight departments named in the case study.
      */
     private void seed() {
-        List<Department> seeded = Arrays.asList(
-                new Department("DEP-01", "Fire and Emergency", "dispatch@fire.gov.au"),
-                new Department("DEP-02", "Hospital", "emergency@health.gov.au"),
-                new Department("DEP-03", "Electricity", "faults@power.gov.au"),
-                new Department("DEP-04", "Transportation", "control@transport.gov.au"),
-                new Department("DEP-05", "Waste Management", "cleanup@waste.gov.au"),
-                new Department("DEP-06", "Water Supply", "incidents@water.gov.au"),
-                new Department("DEP-07", "Schools", "safety@education.gov.au"),
-                new Department("DEP-08", "Law Enforcement", "operations@police.gov.au"));
-        store.store(FILE_NAME, new ArrayList<>(seeded));
+        store.store(FILE_NAME, new ArrayList<>(SeedData.departments()));
     }
 
     /**
