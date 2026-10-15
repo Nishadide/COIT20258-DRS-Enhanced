@@ -3,15 +3,23 @@ package com.cqu.drs.server;
 import com.cqu.drs.db.ConnectionFactory;
 import com.cqu.drs.db.DatabaseConfig;
 import com.cqu.drs.db.SchemaInitialiser;
+import com.cqu.drs.model.UserRole;
+import com.cqu.drs.repository.AlertRepository;
+import com.cqu.drs.repository.AuditRepository;
+import com.cqu.drs.repository.DepartmentRepository;
 import com.cqu.drs.repository.DisasterReportRepository;
-import com.cqu.drs.repository.JsonAuditRepository;
-import com.cqu.drs.repository.JsonDataStore;
+import com.cqu.drs.repository.MySqlAlertRepository;
+import com.cqu.drs.repository.MySqlAuditRepository;
+import com.cqu.drs.repository.MySqlDepartmentRepository;
 import com.cqu.drs.repository.MySqlDisasterReportRepository;
+import com.cqu.drs.repository.MySqlUserRepository;
+import com.cqu.drs.repository.UserRepository;
 import com.cqu.drs.repository.MySqlRequestLogRepository;
 import com.cqu.drs.repository.RequestLogRepository;
 import com.cqu.drs.server.handler.FindReportByReferenceHandler;
 import com.cqu.drs.server.handler.PingHandler;
 import com.cqu.drs.server.handler.SubmitReportHandler;
+import com.cqu.drs.service.AccountService;
 import com.cqu.drs.service.AuditService;
 import com.cqu.drs.service.ReportOperations;
 import com.cqu.drs.service.ReportService;
@@ -83,15 +91,19 @@ public final class ServerMain {
         // implementations; the client has none of this.
         DisasterReportRepository reportRepository =
                 new MySqlDisasterReportRepository(connections);
+        UserRepository userRepository = new MySqlUserRepository(connections);
+        DepartmentRepository departmentRepository =
+                new MySqlDepartmentRepository(connections);
+        AlertRepository alertRepository = new MySqlAlertRepository(connections);
+        AuditRepository auditRepository = new MySqlAuditRepository(connections);
 
-        // The audit trail is still written to a JSON file on the server. The
-        // MySQL audit repository, with the hash chain the schema already
-        // provides for, is the next commit's work. Keeping it here rather than
-        // leaving audit entries unwritten means nothing is lost in the
-        // meantime, and the file is on the server where it belongs rather than
-        // on each client.
-        AuditService auditService = new AuditService(
-                new JsonAuditRepository(new JsonDataStore()));
+        AuditService auditService = new AuditService(auditRepository);
+        AccountService accountService = new AccountService(userRepository, auditService);
+
+        if (departmentRepository.seedIfEmpty()) {
+            log("Seeded the eight responding departments.");
+        }
+        seedAccountsIfNone(accountService);
 
         // The same ReportService the desktop application used in Assessment 2,
         // unchanged, now running on the server with a MySQL repository behind
@@ -134,6 +146,31 @@ public final class ServerMain {
         // otherwise finish and, with every other thread a daemon, take the JVM
         // with it.
         keepRunning();
+    }
+
+    /**
+     * Creates the starting accounts when the database holds none.
+     *
+     * Without this, a server started against a fresh database would be running
+     * correctly with nobody able to sign in, and the first thing anyone did
+     * would be to conclude the application was broken.
+     *
+     * The same three accounts DRS-Initial seeded, so the documented logins
+     * continue to work.
+     *
+     * @param accountService the service that creates accounts
+     */
+    private static void seedAccountsIfNone(AccountService accountService) {
+        if (!accountService.findAll().isEmpty()) {
+            return;
+        }
+        accountService.create("admin", "admin123", "System Administrator",
+                UserRole.ADMINISTRATOR, null, "system");
+        accountService.create("coordinator", "coord123", "Emergency Coordinator",
+                UserRole.COORDINATOR, null, "system");
+        accountService.create("fire.crew", "crew1234", "Fire and Emergency Crew",
+                UserRole.RESPONDER, "DEP-01", "system");
+        log("Seeded the three starting accounts: admin, coordinator, fire.crew.");
     }
 
     private static void keepRunning() {

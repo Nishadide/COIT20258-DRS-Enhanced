@@ -43,6 +43,24 @@ public class JsonAuditRepository implements AuditRepository {
      *
      * @param entry the entry to append
      */
+    /**
+     * {@inheritDoc}
+     *
+     * This store keeps no hash chain, so it reports that it cannot tell
+     * rather than reporting that all is well. A clean result from a store with
+     * no means of detecting alteration would be a claim it cannot support, and
+     * an audit trail that falsely claims to be verified is worse than one that
+     * admits it is not.
+     *
+     * <p>This is also one of the reasons the JSON stores are not used by
+     * DRS-Enhanced: the non-repudiation the specification asks for is a
+     * property the MySQL store has and this one does not.
+     */
+    @Override
+    public AuditChainStatus verifyChain() {
+        return AuditChainStatus.notSupported("The JSON audit store");
+    }
+
     @Override
     public void append(AuditLogEntry entry) {
         if (entry == null) {
