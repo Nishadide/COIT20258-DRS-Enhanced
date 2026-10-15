@@ -11,7 +11,9 @@ import com.cqu.drs.repository.RequestLogRepository;
 import com.google.gson.JsonObject;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -103,6 +105,27 @@ public final class RequestDispatcher {
      */
     public int handlerCount() {
         return handlers.size();
+    }
+
+    /**
+     * The operations the protocol declares that nothing here can carry out.
+     *
+     * Reported so that a forgotten registration is visible when the server
+     * starts rather than when somebody presses the control that needs it. The
+     * list is expected to be non-empty while the three members of the team are
+     * still adding their features, which is why it is logged rather than
+     * treated as a failure to start.
+     *
+     * @return the operations with no handler, in declaration order
+     */
+    public List<Operation> unhandledOperations() {
+        List<Operation> missing = new ArrayList<>();
+        for (Operation operation : Operation.values()) {
+            if (!handlers.containsKey(operation)) {
+                missing.add(operation);
+            }
+        }
+        return missing;
     }
 
     /**

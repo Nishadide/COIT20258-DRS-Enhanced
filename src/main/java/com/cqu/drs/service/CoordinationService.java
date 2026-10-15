@@ -19,7 +19,7 @@ import java.util.UUID;
  * tracks what they report back. Whether a department was actually reached is
  * recorded rather than assumed, so a failed notification can be followed up.
  */
-public class CoordinationService {
+public class CoordinationService implements CoordinationOperations {
 
     private final DisasterReportRepository reportRepository;
     private final DepartmentRepository departmentRepository;
@@ -51,6 +51,7 @@ public class CoordinationService {
      * @return the tasks created
      * @throws IllegalArgumentException when no department is given or the report is unknown
      */
+    @Override
     public List<ResponseTask> allocate(String reference, List<Department> departments,
                                        String dispatchedBy) {
         if (departments == null || departments.isEmpty()) {
@@ -109,6 +110,7 @@ public class CoordinationService {
      * @return the update recorded
      * @throws IllegalArgumentException when the report or task cannot be found
      */
+    @Override
     public StatusUpdate updateStatus(String reference, String taskId,
                                      ResponseStatus status, String note,
                                      String updatedBy) {
@@ -138,6 +140,7 @@ public class CoordinationService {
      * @param departmentId the department whose work is wanted
      * @return the tasks dispatched to that department and not yet complete
      */
+    @Override
     public List<ResponseTask> findTasksForDepartment(String departmentId) {
         List<ResponseTask> tasks = new ArrayList<>();
         for (DisasterReport report : reportRepository.findAll()) {
@@ -159,6 +162,7 @@ public class CoordinationService {
      * @param taskId the task to trace
      * @return the report holding it, or an empty Optional
      */
+    @Override
     public Optional<DisasterReport> findReportForTask(String taskId) {
         return reportRepository.findAll().stream()
                 .filter(r -> r.getTasks().stream()
@@ -171,6 +175,7 @@ public class CoordinationService {
      *
      * @return the available departments
      */
+    @Override
     public List<Department> availableDepartments() {
         return departmentRepository.findAvailable();
     }

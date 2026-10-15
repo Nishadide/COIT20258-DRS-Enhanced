@@ -95,19 +95,11 @@ public final class RemoteReportService implements ReportOperations {
             payload.addProperty("contactNumber", reporter.getContactNumber());
         }
 
-        try {
-            return client.sendOrThrow(Operation.REPORT_SUBMIT, payload)
-                    .get("referenceNumber").getAsString();
-
-        } catch (ProtocolException e) {
-            // A rule the server rejected is reported to the person as the same
-            // kind of failure the local service raises, so the screen's
-            // existing error handling continues to work unchanged.
-            if (e.getErrorCode() == ErrorCode.VALIDATION_FAILED) {
-                throw new IllegalArgumentException(e.getMessage(), e);
-            }
-            throw e;
-        }
+        // A rule the server rejected reaches the screen as the same kind of
+        // failure the local service raises, because the client translates
+        // every refusal in one place.
+        return client.sendOrThrow(Operation.REPORT_SUBMIT, payload)
+                .get("referenceNumber").getAsString();
     }
 
     @Override
@@ -119,20 +111,11 @@ public final class RemoteReportService implements ReportOperations {
         JsonObject payload = new JsonObject();
         payload.addProperty("reference", reference);
 
-        try {
-            JsonObject result = client.sendOrThrow(
-                    Operation.REPORT_FIND_BY_REFERENCE, payload);
-            return Optional.ofNullable(readReport(result.get("report")));
-
-        } catch (ProtocolException e) {
-            if (e.getErrorCode() == ErrorCode.NOT_FOUND) {
-                // Not an error for this operation. Someone mistyping their
-                // reference is an ordinary thing to do, and the screen already
-                // knows how to say so.
-                return Optional.empty();
-            }
-            throw e;
-        }
+        // Not found is an ordinary answer here, not an error: someone
+        // mistyping their reference is a thing people do, and the screen
+        // already knows how to say so.
+        return client.sendAllowingNotFound(Operation.REPORT_FIND_BY_REFERENCE, payload)
+                .map(result -> readReport(result.get("report")));
     }
 
     @Override

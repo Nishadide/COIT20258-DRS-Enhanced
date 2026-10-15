@@ -16,7 +16,7 @@ import java.util.UUID;
  * Creates and maintains staff accounts. Only an administrator reaches this
  * service, and every change it makes is written to the audit log.
  */
-public class AccountService {
+public class AccountService implements AccountOperations {
 
     private final UserRepository userRepository;
     private final AuditService auditService;
@@ -45,6 +45,7 @@ public class AccountService {
      * @return the account created
      * @throws IllegalArgumentException when the login name is taken or details are invalid
      */
+    @Override
     public User create(String username, String plainPassword, String fullName,
                        UserRole role, String departmentId, String createdBy) {
         if (role == null) {
@@ -86,6 +87,7 @@ public class AccountService {
      * @param deactivatedBy the username of the administrator
      * @throws IllegalArgumentException when the account cannot be found
      */
+    @Override
     public void deactivate(String username, String deactivatedBy) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -104,6 +106,7 @@ public class AccountService {
      * @return true when the account was inactive and has now been activated
      * @throws IllegalArgumentException when the account cannot be found
      */
+    @Override
     public boolean activate(String username, String activatedBy) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -125,6 +128,7 @@ public class AccountService {
      * @param changedBy  the username of the administrator
      * @throws IllegalArgumentException when the account cannot be found
      */
+    @Override
     public void assignRole(String username, UserRole role, String changedBy) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -140,6 +144,7 @@ public class AccountService {
      *
      * @return the accounts
      */
+    @Override
     public List<User> findAll() {
         return userRepository.findAll();
     }
@@ -150,6 +155,7 @@ public class AccountService {
      * @param username the name to look for
      * @return the account, or an empty Optional
      */
+    @Override
     public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
     }

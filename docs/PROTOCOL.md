@@ -1,6 +1,6 @@
 # DRS-Enhanced client and server protocol
 
-COIT20258 Assessment 3. Version 1.0.
+COIT20258 Assessment 3. Version 1.2.
 
 This document defines the only means by which the DRS-Enhanced client and
 server communicate. No client class opens a database connection and no server
@@ -114,6 +114,32 @@ protocol level fault, meaning a line that is not valid JSON or a missing
 `operation` field, closes the connection, because after such a fault the
 server cannot know where the next message begins.
 
+### 4.2 What a user looks like on the wire
+
+Several operations return a user: `auth.login`, `account.create` and
+`account.findAll`. Three things about that record are decided here rather than
+left to whichever handler is sending it.
+
+**The password hash is never sent.** Not in any operation, in any shape. The
+protocol serialises users through an adapter that drops any field whose name
+says it holds a credential, and the adapter is registered against the whole
+user hierarchy rather than the abstract type, so a handler that passes a
+`SystemAdministrator` or a list of users cannot fall through to plain
+reflection and send the field by accident. That mistake was made and found by
+asking the codec what it emitted: `account.findAll` would have handed any
+administrator's client the hash of every account in the system in one reply.
+Hashes are not passwords, but they are what the server compares against, and a
+stolen hash is the starting point of an offline guessing attack that nothing
+on the server can see or rate limit.
+
+**The role decides the class.** `User` is abstract and has three subclasses, so
+the adapter reads the `role` field already present on every record and builds
+accordingly. A record arriving with no role is refused rather than guessed at.
+
+**A responder keeps its department.** The concrete class is serialised, not the
+declared one, so `departmentId` travels and the responder's screen can ask for
+its own department's work.
+
 ## 5. Operations
 
 `Role` lists the roles permitted to invoke the operation. `Public` means no
@@ -205,26 +231,90 @@ it cannot be bypassed.
 | `account.create` | Administrator | `username`, `password`, `fullName`, `role`, `departmentId` | `user` |
 | `account.deactivate` | Administrator | `username` | `acknowledged` |
 | `account.activate` | Administrator | `username` | `changed` |
-| `account.assignRole` | Administrator | `username`, `role` | `user` |
+| `account.assignRole` | Administrator | `username`, `role` | `acknowledged` |
 | `account.findAll` | Administrator | none | `users` |
 | `audit.findAll` | Administrator | none | `entries` |
-| `audit.verifyChain` | Administrator | none | `intact`, `brokenAtSequence` |
+| `audit.verifyChain` | Administrator | none | `status` |
+
+`account.assignRole` returns an acknowledgement rather than the altered user,
+which version 1.1 of this document specified. The reason is substitutability:
+the same interface is implemented by the service that reaches a repository in
+the client process, whose `assignRole` returns nothing, and a protocol
+operation that returned more than the local service could would make the two
+implementations visibly different to the screen calling them.
+
+`account.activate` reports whether anything changed, so pressing the control
+twice is harmless and the second press says the account was already active
+rather than implying work was done.
 
 `audit.verifyChain` has no equivalent in Assessment 2. It walks the audit log
 and recomputes the hash chain described in section 7.4, which is how the
-non-repudiation claim is demonstrated rather than asserted.
+non-repudiation claim is demonstrated rather than asserted. It returns one
+`status` object rather than the two fields version 1.1 specified:
+
+| Field | Meaning |
+| --- | --- |
+| `supported` | Whether this store keeps a hash chain at all |
+| `intact` | Whether every recomputed hash matched the stored one |
+| `entriesChecked` | How many entries were read |
+| `brokenAtSequence` | The sequence number of the first entry that failed, or -1 |
+| `detail` | What was found, in words |
+
+`supported` is the field that made the change necessary. The JSON store
+inherited from Assessment 2 keeps no chain, so it cannot determine whether its
+entries have been altered. Reporting `intact: false` would say the trail had
+been tampered with, and reporting `intact: true` would be a claim the store has
+no means of supporting. Neither is true, so the answer has to be able to say
+that the question cannot be answered here.
+
+**No operation writes an audit entry, and none will be added.** Entries are
+written by the server as a consequence of work it has carried out and can
+vouch for. A client able to append to the trail could write entries blaming
+another user, and a trail that accepts what it is told is evidence of nothing.
+The screen that wrote its own entry after changing a department's availability
+in Assessment 2 no longer does: `department.setAvailability` writes the entry
+as part of carrying out the change, so the saving and the recording can no
+longer come apart.
 
 ### 5.7 Migration
 
 | Operation | Role | Payload | Returns |
 | --- | --- | --- | --- |
-| `admin.migrate` | Administrator | `confirm` | counts per entity, `skipped` |
+| `admin.migrate` | Administrator | none | `outcome` |
 
 The specification requires Assessment 2 data to be loaded into the database
 through the server rather than by a direct database import. This operation is
-how that requirement is met. It is idempotent: a record whose primary key is
-already present is counted as skipped, not inserted again, so running the
-migration twice does not duplicate data.
+how that requirement is met: the client holds no database connection and no
+files, and the folder read is named by the server's own configuration
+(`drs.migration.source`, default `data`).
+
+`outcome` carries what happened:
+
+| Field | Meaning |
+| --- | --- |
+| `performed` | Whether anything was moved |
+| `detail` | What happened, in words |
+| `departments`, `accounts`, `reports`, `alerts`, `auditEntries` | How many of each were carried over |
+
+**Idempotence is recorded, not inferred.** Version 1.1 specified that a record
+whose primary key was already present would be counted as skipped. That was
+replaced because saving a report is an upsert: the second run would not skip
+the report, it would rewrite it, and nothing would say so. Instead the
+migration records itself in `schema_metadata` and the second run does nothing
+at all, returning `performed: false` with the date of the first and what it
+moved.
+
+**A database that already holds reports is refused** with `CONFLICT`. Both
+systems number reports from DR-0001 upwards, so migrating into a database in
+use would silently replace reports lodged since the server started with
+reports from Assessment 2. The migration is a one-off move into an empty
+database, which is something the person asking can arrange, and guessing which
+of two reports called DR-0001 was wanted is not something the server can do.
+
+**No `confirm` field.** Version 1.1 specified one. A flag that a client must
+set is a flag a client always sets, so it protects nothing; what protects the
+data is the state check above, which no client can satisfy by asserting
+anything.
 
 ### 5.8 Operations reserved for the two new features
 
@@ -276,6 +366,30 @@ Enforced at two points, both on the server.
    described in section 5.4. A record level check is required in addition to
    the operation level check because two users may hold the same role and
    still be entitled to different records.
+
+The record level checks in force are:
+
+| Operation | Refused when | Code |
+| --- | --- | --- |
+| `coordination.updateStatus` | A Responder names a task dispatched to another department | `ACCESS_DENIED` |
+| `coordination.reportForTask` | A Responder names a task dispatched to another department | `ACCESS_DENIED` |
+| `coordination.tasksForDepartment` | A Responder names a department other than their own | `ACCESS_DENIED` |
+| `account.deactivate` | The account named is the one on the session | `ACCESS_DENIED` |
+| `account.assignRole` | The account named is the one on the session | `ACCESS_DENIED` |
+
+The two account rules are not cosmetic. An administrator who deactivated or
+demoted their own account would remove their own access to the screen they
+were standing on, and the role on an open session is copied at sign-in rather
+than re-read per request, so the change would not take effect until the next
+sign-in. The rules also keep the system administrable: deactivating requires
+an administrator's session and an administrator cannot deactivate themselves,
+so the administrator carrying out the change is always left active, and the
+database cannot be brought to a state where nobody can sign in to manage it.
+No separate "last administrator" check is needed to guarantee that.
+
+A refusal names no record the caller is not entitled to know exists. A
+Responder asking about another department's task is told they may not, not
+whether the task is there.
 
 Owner: Nishadi, as part of the server.
 
@@ -374,7 +488,37 @@ and the request could not have been replayed by a third party.
 Owner: Nishadi provides the mechanism in the protocol layer. Member 3 covers
 it in the security section of the report.
 
-### 7.6 What this design does not claim
+### 7.6 How a refusal reaches the person at the keyboard
+
+Every refusal is an `ERROR` response with a code from section 6. The client
+translates it once, in the one method every request passes through, into the
+failures the screens were already written to catch:
+
+| Code | Raised as |
+| --- | --- |
+| `NOT_FOUND`, `CONFLICT`, `VALIDATION_FAILED` | `IllegalArgumentException` |
+| `ACCESS_DENIED` | `IllegalStateException` |
+| everything else | the protocol exception itself |
+
+This exists because each screen talks to an interface with two
+implementations, one reaching a repository in the same process and one sending
+a request to the server, and the two are only substitutable if they fail alike
+as well as succeed alike. A controller that had to catch a protocol exception
+would be a controller that knew which tier it was in.
+
+The translation began as one method per remote service, and those disagreed: a
+role refusal arrived as one kind of failure from one operation and as a raw
+protocol exception from an operation that had nothing else to catch. The
+end-to-end test found it by asking every operation rather than a
+representative one. Agreement between five copies of a decision cannot be
+maintained, so there is now one copy.
+
+The codes deliberately not translated are the ones the person cannot act on: an
+expired session, a signature that did not verify, a replay, a storage failure.
+Presenting those as though a field were at fault would send somebody looking
+for a mistake they did not make.
+
+### 7.7 What this design does not claim
 
 The socket is not TLS encrypted, so the protocol protects integrity and
 authenticity on the wire but not confidentiality. A password therefore travels
@@ -449,3 +593,4 @@ without editing a tracked file.
 | --- | --- | --- |
 | 1.0 | 2026-10-15 | First frozen version. Operation set derived from the 27 service calls made by the 9 Assessment 2 controllers |
 | 1.1 | 2026-10-15 | `report.findByReference` corrected from requiring a session to public. Version 1.0 contradicted the application: the welcome screen offers to check a report without signing in, as the case study requires. Agreed by the team before the client was written, so no client work depended on the earlier reading |
+| 1.2 | 2026-10-16 | Written while the client half of the protocol was built, when the document and the code first had to agree in detail. Four corrections, each with its reason in the section it belongs to. **5.6** `account.assignRole` returns an acknowledgement rather than the altered user, so that the local and remote implementations of the same interface fail and return alike; `audit.verifyChain` returns one `status` object with a `supported` field, because a store that keeps no chain must be able to say so rather than claim the trail is intact or report it as tampered with. **5.7** `admin.migrate` takes no `confirm` field, because a flag the client must set is a flag the client always sets; idempotence is recorded in `schema_metadata` rather than inferred from primary keys, because saving a report is an upsert and the second run would rewrite rather than skip. **New 4.2** states that no operation sends a password hash, after the codec was found to be sending one. **New 7.6** states how the client turns a refusal into the failures the screens already catch. The version number in the header is also corrected: it still read 1.0 after version 1.1 was agreed |

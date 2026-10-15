@@ -116,7 +116,7 @@ public class CoordinationController implements Initializable {
      * being restarted.
      */
     private void refreshDepartments() {
-        List<Department> departments = context.getDepartmentRepository().findAll();
+        List<Department> departments = context.getDepartmentService().findAll();
         departmentList.setItems(FXCollections.observableArrayList(departments));
 
         long available = departments.stream().filter(Department::isAvailable).count();

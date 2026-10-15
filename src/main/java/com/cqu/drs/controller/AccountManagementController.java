@@ -79,7 +79,7 @@ public class AccountManagementController implements Initializable {
         departmentCombo.setButtonCell(departmentCell(false));
         departmentCombo.setCellFactory(list -> departmentCell(false));
         departmentCombo.setItems(FXCollections.observableArrayList(
-                context.getDepartmentRepository().findAll()));
+                context.getDepartmentService().findAll()));
 
         availabilityCombo.setButtonCell(departmentCell(true));
         availabilityCombo.setCellFactory(list -> departmentCell(true));
@@ -159,7 +159,7 @@ public class AccountManagementController implements Initializable {
                             + " must replace the initial password at first sign-in.");
             clearForm();
             refreshUsers();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             messageLabel.setText(e.getMessage());
         }
     }
@@ -208,7 +208,7 @@ public class AccountManagementController implements Initializable {
                     selected.getUsername() + " can no longer sign in. "
                             + "Use Reactivate selected to restore the account.");
             refreshUsers();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             messageLabel.setText(e.getMessage());
         }
     }
@@ -240,7 +240,7 @@ public class AccountManagementController implements Initializable {
             Navigator.showInfo("Account reactivated",
                     selected.getUsername() + " can sign in again.");
             refreshUsers();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             messageLabel.setText(e.getMessage());
         }
     }
@@ -271,11 +271,22 @@ public class AccountManagementController implements Initializable {
             return;
         }
 
-        context.getAccountService().assignRole(
-                selected.getUsername(), chosen.get(), context.getCurrentUsername());
-        Navigator.showInfo("Role changed",
-                selected.getUsername() + " is now a " + chosen.get().getLabel() + ".");
-        refreshUsers();
+        try {
+            context.getAccountService().assignRole(
+                    selected.getUsername(), chosen.get(), context.getCurrentUsername());
+            Navigator.showInfo("Role changed",
+                    selected.getUsername() + " is now a " + chosen.get().getLabel() + ".");
+            refreshUsers();
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            // This call had no handling at all, because in DRS-Initial the
+            // only way it could fail was an account that had been deleted
+            // from under the screen, which nothing could do. The server now
+            // refuses an administrator changing their own role, so a refusal
+            // has become a thing that happens and has to be shown rather than
+            // thrown out of a button press.
+            messageLabel.setText(e.getMessage());
+        }
     }
 
     /**
@@ -335,7 +346,7 @@ public class AccountManagementController implements Initializable {
 
         availabilityCombo.setValue(null);
         availabilityCombo.setItems(FXCollections.observableArrayList(
-                context.getDepartmentRepository().findAll()));
+                context.getDepartmentService().findAll()));
 
         if (previousId != null) {
             for (Department department : availabilityCombo.getItems()) {
@@ -353,6 +364,18 @@ public class AccountManagementController implements Initializable {
      * recorded as having failed, which is how the failure path in the response
      * coordination can be exercised from the interface.
      *
+     * <h2>One call where there used to be three</h2>
+     * This screen used to fetch the department, flip the field, save it
+     * through the repository and then write its own audit entry. None of that
+     * survives three tiers: a client holds no repository, and an audit entry
+     * written by a client is a claim rather than a record, because the server
+     * has no way to know whether the thing being claimed actually happened.
+     *
+     * <p>So the three steps are now one operation, and the department shown
+     * afterwards is the one the operation returned rather than the object this
+     * screen was holding with a field altered. A change that was refused
+     * therefore cannot be displayed as though it had been made.
+     *
      * @param event the button press
      */
     @FXML
@@ -365,15 +388,18 @@ public class AccountManagementController implements Initializable {
             return;
         }
 
-        selected.setAvailable(!selected.isAvailable());
-        context.getDepartmentRepository().save(selected);
-        context.getAuditService().record(context.getCurrentUsername(),
-                "Set " + selected.getName() + " to "
-                        + (selected.isAvailable() ? "available" : "unavailable"));
+        try {
+            Department changed = context.getDepartmentService().setAvailability(
+                    selected.getDepartmentId(), !selected.isAvailable(),
+                    context.getCurrentUsername());
 
-        availabilityLabel.setText(selected.getName() + " is now "
-                + (selected.isAvailable() ? "available" : "unavailable") + ".");
-        refreshAvailabilityCombo();
+            availabilityLabel.setText(changed.getName() + " is now "
+                    + (changed.isAvailable() ? "available" : "unavailable") + ".");
+            refreshAvailabilityCombo();
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            messageLabel.setText(e.getMessage());
+        }
     }
 
     @FXML

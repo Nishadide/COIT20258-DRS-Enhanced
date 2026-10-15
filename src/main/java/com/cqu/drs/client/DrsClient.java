@@ -18,6 +18,7 @@ import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 /**
  * The client's end of the protocol.
@@ -164,34 +165,87 @@ public final class DrsClient implements AutoCloseable {
     }
 
     /**
-     * Sends a request and returns its payload, turning a refusal into an
-     * exception.
+     * Sends a request and returns its payload, turning a refusal into the
+     * failure the screens expect.
      *
-     * Used by the callers for whom a refusal is not an expected outcome, so
-     * that each one does not have to check the status itself and risk
-     * forgetting.
+     * <h2>Why the translation happens here and nowhere else</h2>
+     * It began in the remote services, each translating the refusals it
+     * expected, and they disagreed: a role refusal arrived as one kind of
+     * failure from one operation and as a protocol exception from the next,
+     * because an operation with nothing else to catch had nowhere to put the
+     * translation. The end-to-end test found it by asking every operation
+     * rather than a representative one.
+     *
+     * <p>Every request in the client passes through this method, so doing it
+     * here means no service can be inconsistent with another and none can
+     * forget. {@link Refusals} says what each refusal becomes and why.
      *
      * @param operation the operation to invoke
      * @param payload   the operation's arguments
      * @return the response payload
-     * @throws ProtocolException          when the server refused the request
+     * @throws IllegalArgumentException   when the request named something
+     *                                    unknown or broke a rule
+     * @throws IllegalStateException      when this session may not do it
+     * @throws ProtocolException          for a refusal the person cannot act
+     *                                    on, such as an expired session
      * @throws ServerUnavailableException when the server cannot be reached
      */
     public JsonObject sendOrThrow(Operation operation, JsonObject payload) {
         Response response = send(operation, payload);
         if (!response.isOk()) {
-            ErrorCode code = response.errorCodeOrNull();
-            if (code == ErrorCode.SESSION_EXPIRED || code == ErrorCode.NOT_AUTHENTICATED) {
-                // The session is gone, so holding the token would mean every
-                // later request failed the same way.
-                clearSession();
-            }
-            throw new ProtocolException(
-                    code == null ? ErrorCode.INTERNAL_ERROR : code,
-                    response.getMessage() == null
-                            ? "The server refused the request." : response.getMessage());
+            throw Refusals.translate(refusalOf(response));
         }
         return response.getPayload();
+    }
+
+    /**
+     * Sends a request for which finding nothing is an ordinary answer.
+     *
+     * Someone mistyping a reference number is not an error, and neither is
+     * asking about a task that has since been removed. Those callers want an
+     * empty Optional rather than an exception, and saying so at the call site
+     * is clearer than catching a refusal and deciding it was expected.
+     *
+     * @param operation the operation to invoke
+     * @param payload   the operation's arguments
+     * @return the response payload, or an empty Optional when the server
+     *         reported that there is no such record
+     * @throws IllegalStateException      when this session may not do it
+     * @throws ProtocolException          for a refusal the person cannot act
+     *                                    on
+     * @throws ServerUnavailableException when the server cannot be reached
+     */
+    public Optional<JsonObject> sendAllowingNotFound(Operation operation,
+                                                     JsonObject payload) {
+        Response response = send(operation, payload);
+        if (response.isOk()) {
+            return Optional.of(response.getPayload());
+        }
+        ProtocolException refusal = refusalOf(response);
+        if (refusal.getErrorCode() == ErrorCode.NOT_FOUND) {
+            return Optional.empty();
+        }
+        throw Refusals.translate(refusal);
+    }
+
+    /**
+     * Turns a refused response into the refusal it describes, and reacts to
+     * the one refusal that says something about this client's own state.
+     *
+     * @param response the refused response
+     * @return the refusal
+     */
+    private ProtocolException refusalOf(Response response) {
+        ErrorCode code = response.errorCodeOrNull();
+        if (code == ErrorCode.SESSION_EXPIRED || code == ErrorCode.NOT_AUTHENTICATED) {
+            // The session is gone, so holding the token would mean every later
+            // request failed the same way.
+            clearSession();
+        }
+        return new ProtocolException(
+                code == null ? ErrorCode.INTERNAL_ERROR : code,
+                response.getMessage() == null
+                        ? "The server refused the request." : response.getMessage());
     }
 
     private Response exchange(Operation operation, JsonObject payload) throws IOException {

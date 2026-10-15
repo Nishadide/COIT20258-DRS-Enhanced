@@ -16,7 +16,7 @@ import java.util.UUID;
  * its recipients is recorded on the alert rather than assumed, so that a
  * failed broadcast can be seen and dealt with.
  */
-public class AlertService {
+public class AlertService implements AlertOperations {
 
     private final DisasterReportRepository reportRepository;
     private final AlertRepository alertRepository;
@@ -51,6 +51,7 @@ public class AlertService {
      * @return the alert issued, carrying whether it was delivered
      * @throws IllegalArgumentException when the report cannot be found
      */
+    @Override
     public Alert issue(String reference, AlertType type, String affectedArea,
                        String message, String issuedBy) {
         DisasterReport report = reportRepository.findByReference(reference)
@@ -95,8 +96,11 @@ public class AlertService {
      * @param severity the severity assessed
      * @return true when an evacuation alert should be offered
      */
+    @Override
     public boolean warrantsEvacuation(Severity severity) {
-        return severity == Severity.SEVERE;
+        // Delegated so that the client, which answers this without contacting
+        // the server, and the server cannot come to disagree about it.
+        return AlertRules.warrantsEvacuation(severity);
     }
 
     /**
@@ -104,6 +108,7 @@ public class AlertService {
      *
      * @return the alerts
      */
+    @Override
     public List<Alert> findAll() {
         return alertRepository.findAll();
     }

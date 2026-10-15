@@ -36,20 +36,21 @@ title DRS-Enhanced: three-tier architecture\nCOIT20258 Assessment 3
 package "TIER 1   Presentation   —   JavaFX client process" as T1 #E3F2FD {
   rectangle "**com.cqu.drs.controller (10)** and the 10 FXML views\n\nWelcome   ReportDisaster   TrackReport   Login   Dashboard\nAssessment   Coordination   Alert   DepartmentResponse\nAccountManagement\n\nunchanged from Assessment 2" as CTRL
   rectangle "**com.cqu.drs (3)**\nMainApp     Navigator     AppContext\n\nAppContext builds the object graph once and decides,\nfrom drs.client.mode, whether the screens talk to a\nlocal service or to the server" as CTX
-  rectangle "**com.cqu.drs.client (3)**\n\nRemoteReportService\nimplements ReportOperations by asking the server\n\nDrsClient\none socket held for the session, signs every request\n\nServerUnavailableException" as CLIENT
+  rectangle "**com.cqu.drs.client (14)**\n\nRemoteReportService   RemoteAssessmentService\nRemoteCoordinationService   RemoteAlertService\nRemoteAccountService   RemoteAuditService\nRemoteAuthenticationService   RemoteDepartmentService\nRemoteMigrationService\neach implements the same interface as the local service\n\nDrsClient   one socket held for the session, signs every request\nRefusals   turns a refusal into the failure the screens catch\nResults   reads domain objects out of a payload\nMigrationTool   console client for the data migration" as CLIENT
 }
 
 ' ==========================================================================
 package "TIER 2   Application   —   multi-threaded server process" as T2 #E8F5E9 {
   rectangle "**com.cqu.drs.server (7)**\nServerMain      checks the database, then opens the port\nDrsServer        accept loop on its own thread, fixed pool of 32\nClientHandler   one per connected client, holds nothing shared" as SERVER
   rectangle "**RequestDispatcher**   and   **SessionRegistry / Session**\n\nevery request passes the same checks in the same order:\nrecord and claim  →  operation  →  session  →  role\n→  signature  →  handler" as DISPATCH
-  rectangle "**com.cqu.drs.server.handler (3)**\nSubmitReportHandler   FindReportByReferenceHandler   PingHandler\none class per operation, so each member adds their own\nwithout editing a file the others are editing" as HANDLERS
-  rectangle "**com.cqu.drs.service (9)**\nReportService   AssessmentService   CoordinationService\nAlertService   AccountService   AuthenticationService\nAuditService   ReportValidation   ReportOperations «interface»\n\ncarried over from Assessment 2 unchanged" as SERVICES
+  rectangle "**com.cqu.drs.server.handler (30)**\n29 handlers, one per operation, plus Payloads\nsession 4   reports 4   assessment 4   coordination 7\nalerts 2   accounts 5   audit 2   migration 1\n\none class per operation, so each member adds their own\nwithout editing a file the others are editing. A test builds\nthe server own registration list and fails if any declared\noperation has no handler" as HANDLERS
+  rectangle "**com.cqu.drs.migration (7)**\n\nDataMigrationService\nreads the Assessment 2 JSON through its own repositories\nand writes through the MySQL ones, so the migrated rows\nare written under the same constraints and transactions\nas every row the running application writes\n\nMySqlMigrationLedger\nrecords the migration in schema_metadata, so a second\nrun does nothing rather than rewriting what is there" as MIGRATION
+  rectangle "**com.cqu.drs.service (18)**\nReportService   AssessmentService   CoordinationService\nAlertService   AccountService   AuthenticationService\nAuditService   DepartmentService\nReportValidation   AlertRules\n\n8 «interface» operations, each implemented twice:\nonce here and once in the client\n\nthe services themselves are Assessment 2 unchanged" as SERVICES
 }
 
 ' ==========================================================================
 package "TIER 3   Data" as T3 #FFF3E0 {
-  rectangle "**com.cqu.drs.repository (16)**\n\n**«interface»**\nDisasterReportRepository   UserRepository   AlertRepository\nDepartmentRepository   AuditRepository   RequestLogRepository\n\n**MySQL implementations**\nMySqlDisasterReportRepository   MySqlRequestLogRepository\nparameter markers throughout, one transaction per aggregate\n\n**JSON implementations**\nthe five DRS-Initial stores, still passing their inherited tests" as REPO
+  rectangle "**com.cqu.drs.repository (22)**\n\n**«interface»** 6\nDisasterReportRepository   UserRepository   AlertRepository\nDepartmentRepository   AuditRepository   RequestLogRepository\n\n**MySQL implementations** 6\nreports   users   departments   alerts   audit   request log\nparameter markers throughout, one transaction per aggregate\nAuditChain   the hash each entry is chained onto\n\n**JSON implementations** 5\nthe DRS-Initial stores, still passing their inherited tests" as REPO
   rectangle "**com.cqu.drs.db (7)**\n\nConnectionFactory\njava.sql only: the driver is needed to run, never to compile\n\nDatabaseConfig\nsystem property → environment → db.properties → default\n\nSchemaInitialiser   CoreSchema   SchemaModule\nSchemaModules   SchemaTool\ncreates the schema on startup; a second run changes nothing" as DB
   database "**MySQL 8.0**   drs_enhanced\n\ndisaster_reports   reporters   assessments   response_tasks\nstatus_updates   alerts   users   departments\naudit_log   request_log   schema_metadata\n\n11 tables, InnoDB, utf8mb4" as MYSQL #FFE0B2
 }
@@ -58,7 +59,7 @@ package "TIER 3   Data" as T3 #FFF3E0 {
 package "Shared by both processes   —   compiled into the client and the server alike" as SHARED #ECEFF1 {
   rectangle "**com.cqu.drs.protocol (8)**\nOperation   the 29 operations and the role permitted each\nRequest   Response   ResponseStatus   ErrorCode\nProtocolCodec   one JSON object per line\nRequestSigner   HMAC-SHA256 over the canonical request" as PROTO
   rectangle "**com.cqu.drs.model (21)**\nDisasterReport   Assessment   ResponseTask   StatusUpdate\nAlert   Department   Reporter   Location   AuditLogEntry\nUser and its three roles   seven enumerations   DrsConstants\n\ndepends on nothing else in the system" as MODEL
-  rectangle "**com.cqu.drs.json (2)**\nLocalDateTimeAdapter   UserAdapter\n\nused by the protocol and by the JSON stores alike, so the\nclient depends on no part of the data tier" as JSONADAPT
+  rectangle "**com.cqu.drs.json (3)**\nLocalDateTimeAdapter\nUserAdapter   stores every field, for the files\nProtocolUserAdapter   drops the credential, for the wire\n\nused by the protocol and by the JSON stores alike, so the\nclient depends on no part of the data tier" as JSONADAPT
 }
 
 ' ==========================================================================
@@ -74,6 +75,7 @@ DISPATCH --> HANDLERS
 HANDLERS --> SERVICES
 SERVICES --> REPO
 REPO --> DB
+MIGRATION --> REPO
 
 DB -[#E65100,thickness=5]-> MYSQL : "   **JDBC**\n   MySQL Connector/J 8.4.0   "
 
@@ -118,8 +120,13 @@ note right of DISPATCH
   <b>Non-repudiation</b>  the HMAC is stored with the
   request, and the unique key on request_id
   refuses a replay even after a restart.
-  <b>Encryption</b>  sensitive fields are encrypted
-  before insert and decrypted after select.
+  <b>Encryption</b>  the schema stores the encrypted
+  form of the fields named in PROTOCOL.md 7.3, and
+  the AES-256-GCM encrypt and decrypt is Member 3's
+  task. Request signing proves integrity, not
+  confidentiality: the socket is not TLS, which the
+  report records as a known limitation with its
+  remedy rather than leaving it to be found.
 end note
 
 note right of REPO

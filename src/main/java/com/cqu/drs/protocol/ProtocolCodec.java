@@ -1,6 +1,8 @@
 package com.cqu.drs.protocol;
 
 import com.cqu.drs.json.LocalDateTimeAdapter;
+import com.cqu.drs.json.ProtocolUserAdapter;
+import com.cqu.drs.model.User;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -21,11 +23,26 @@ import java.time.LocalDateTime;
  * here. It reuses {@link LocalDateTimeAdapter}, written for Assessment 2 and
  * already covered by tests, so the protocol's timestamps and the stored
  * timestamps are formatted by the same code and cannot disagree.
+ *
+ * <p>Users are handled by {@link ProtocolUserAdapter} rather than by the
+ * adapter the JSON stores use, because what may be written to a file on the
+ * server and what may be sent to a client are not the same thing. The stores
+ * keep the password hash; the protocol must not carry it.
  */
 public final class ProtocolCodec {
 
     private static final Gson GSON = new GsonBuilder()
             .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+            // Registered against the hierarchy rather than against User
+            // alone, and that distinction is the whole of it. An adapter
+            // registered for User is consulted only when the declared type is
+            // User, and the declared type is not User when a handler writes a
+            // list of accounts or passes an object whose runtime class is
+            // SystemAdministrator. Those calls would fall through to plain
+            // reflection, which writes every field a user has, including the
+            // password hash. A hierarchy adapter is consulted for the
+            // subclasses too, so no call site can get round it by accident.
+            .registerTypeHierarchyAdapter(User.class, new ProtocolUserAdapter())
             // Nulls are omitted rather than written. An absent sessionToken or
             // errorCode is the normal case, and leaving them out keeps the
             // messages small and readable in a log.

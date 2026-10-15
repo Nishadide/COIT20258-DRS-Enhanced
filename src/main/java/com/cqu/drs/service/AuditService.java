@@ -1,6 +1,7 @@
 package com.cqu.drs.service;
 
 import com.cqu.drs.model.AuditLogEntry;
+import com.cqu.drs.repository.AuditChainStatus;
 import com.cqu.drs.repository.AuditRepository;
 
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.UUID;
  * Records what was done in the system, so that the actions taken during a
  * response can be reviewed afterwards.
  */
-public class AuditService {
+public class AuditService implements AuditOperations {
 
     private final AuditRepository auditRepository;
 
@@ -39,6 +40,19 @@ public class AuditService {
      *
      * @return the entries
      */
+    /**
+     * {@inheritDoc}
+     *
+     * Delegated to the store, because whether the trail is tamper evident is a
+     * property of how it is kept. The MySQL store hash chains its entries and
+     * can answer; the JSON store cannot and says so.
+     */
+    @Override
+    public AuditChainStatus verifyChain() {
+        return auditRepository.verifyChain();
+    }
+
+    @Override
     public List<AuditLogEntry> findAll() {
         return auditRepository.findAll();
     }

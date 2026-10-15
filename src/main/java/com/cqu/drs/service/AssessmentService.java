@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * never chosen by hand: it follows from the severity recorded, so the two can
  * never disagree.
  */
-public class AssessmentService {
+public class AssessmentService implements AssessmentOperations {
 
     private final DisasterReportRepository reportRepository;
     private final AuditService auditService;
@@ -46,6 +46,7 @@ public class AssessmentService {
      * @throws IllegalArgumentException when the report cannot be found
      * @throws IllegalStateException    when the report is not awaiting assessment
      */
+    @Override
     public Assessment assess(String reference, Severity severity, String notes,
                              String assessedBy) {
         DisasterReport report = reportRepository.findByReference(reference)
@@ -68,6 +69,7 @@ public class AssessmentService {
      * @param assessment the assessment
      * @return the derived priority
      */
+    @Override
     public Priority prioritise(Assessment assessment) {
         if (assessment == null) {
             throw new IllegalArgumentException("Cannot prioritise a null assessment.");
@@ -82,6 +84,7 @@ public class AssessmentService {
      *
      * @return the reports awaiting or undergoing a response, in priority order
      */
+    @Override
     public List<DisasterReport> queueByPriority() {
         return reportRepository.findAll().stream()
                 .filter(DisasterReport::isAssessed)
@@ -95,6 +98,7 @@ public class AssessmentService {
      *
      * @return the reports awaiting assessment
      */
+    @Override
     public List<DisasterReport> awaitingAssessment() {
         return reportRepository.findAll().stream()
                 .filter(r -> !r.isAssessed())
@@ -110,6 +114,7 @@ public class AssessmentService {
      * @throws IllegalArgumentException when the report cannot be found
      * @throws IllegalStateException    when work remains outstanding
      */
+    @Override
     public void resolve(String reference, String resolvedBy) {
         DisasterReport report = reportRepository.findByReference(reference)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -125,6 +130,7 @@ public class AssessmentService {
      * @param reference the reference to look for
      * @return the report, or an empty Optional
      */
+    @Override
     public Optional<DisasterReport> findByReference(String reference) {
         return reportRepository.findByReference(reference);
     }
