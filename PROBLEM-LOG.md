@@ -264,3 +264,64 @@ rather than assumed correct because it was written down first.
 **GitHub issue:** #
 
 ---
+
+### 2026-10-15 Technical: the tamper-evident audit trail never verified at all
+
+**Who hit it:** Nishadi, building the MySQL audit repository.
+
+**What happened:** The audit trail is hash chained so that altering it can be
+detected, which is how the non-repudiation requirement in section 2.5 is met.
+Entries were written, every row had a sixty-four character hash, each recorded
+the hash of the entry before it, and reading the trail back produced exactly
+what had been written. By every visible sign it worked.
+
+It did not work. Verifying a trail that nobody had touched reported it broken
+at the first entry.
+
+The cause was a mismatch between what was hashed and what was stored. The hash
+was taken over the timestamp as Java produced it, to nanosecond precision. The
+column is `DATETIME(6)`, which holds microseconds, so the value written was
+shorter than the value hashed. Verification read the stored timestamp,
+recomputed the hash from it, and got a different answer. Every entry failed,
+always, from the first one ever written.
+
+This is the same microsecond truncation already recorded against the disaster
+report repository earlier in the day, where it was a cosmetic difference
+between a saved object and a reloaded one. Here the same fact made a security
+control useless.
+
+**What was tried:** Nothing, because the test said precisely what was wrong.
+What matters is which test. The tests written first were the interesting ones:
+alter an entry and check the chain notices, delete one and check the gap is
+found, change a timestamp and check it is caught. Every one of those passed,
+because a chain that never verifies reports tampering whether or not there was
+any. Six tests agreeing that tampering is detected proved nothing at all.
+
+The test that found it was the dull one: write three entries, touch nothing,
+and check the trail verifies.
+
+**What fixed it:** The timestamp is truncated to microseconds before it is
+hashed and before it is stored, so the value hashed and the value kept are the
+same value. It is also put back on the entry the caller holds, so what the
+caller has matches what was written rather than differing in digits nobody can
+see.
+
+**A second fault, found by the same run:** with six threads appending at once,
+two failed with `Deadlock found when trying to get lock`. Appends are
+serialised by locking the last entry, and InnoDB will roll one transaction back
+when two want the same rows. That is not a fault, it is how the database
+resolves contention, and the application is expected to try again. A deadlock
+and a lock wait timeout are now retried like any other lost race. Treating them
+as failures would have meant an audit entry lost whenever two people acted at
+the same moment, which is exactly when an audit trail is worth having.
+
+**What it changed about how the work is done:** A detector has to be shown to
+be quiet before it is shown to be loud. Testing only that a mechanism catches
+the bad case cannot distinguish a working detector from one that fires
+constantly, and the second is worse than having none, because it looks like
+diligence. Every check of this kind now starts with the case where nothing is
+wrong.
+
+**GitHub issue:** #
+
+---
