@@ -322,6 +322,146 @@ constantly, and the second is worse than having none, because it looks like
 diligence. Every check of this kind now starts with the case where nothing is
 wrong.
 
+**GitHub issue:** 
+
+---
+
+### 2026-10-16 Technical: the protocol was sending every account's password hash
+
+**Who hit it:** Nishadi
+
+**What happened:** While writing the client-side service proxies, the protocol
+codec was configured to serialise users with `UserAdapter`, the adapter written
+for the JSON files. That adapter writes every field a user has, including
+`passwordHash`. The effect was that `auth.login` returned the hash of whoever
+signed in, and `account.findAll` returned the hash of every account in the
+system in one reply, to any administrator's client and to anything watching the
+connection. Hashes are not passwords, but they are what the server compares
+against, so a stolen hash is the starting point of an offline guessing attack
+that nothing on the server can see or rate limit.
+
+**What was tried:** The fault was not visible by reading the code, because the
+registration line looked correct and the adapter is correct for the job it was
+written for. It was found by writing a short program that asked the codec what
+it actually emitted, for a user serialised three ways: as the declared type
+`User`, as its runtime subclass, and inside a list. All three printed the hash.
+
+The first fix attempt was to register the adapter against `User`. That closed
+only one of the three: an adapter registered for a type is consulted only when
+the declared type matches, and a list of users and an object whose runtime
+class is `SystemAdministrator` both fall through to plain reflection.
+
+**What fixed it:** A new `ProtocolUserAdapter`, registered with
+`registerTypeHierarchyAdapter` so that it is consulted for `User` and for all
+three of its subclasses, which means no handler can get round it by passing an
+object without naming its type. It drops any field whose name says it holds a
+credential, with booleans exempt so that the `mustChangePassword` flag the
+client needs still travels. The JSON stores keep the original adapter, because
+a store that dropped the hash could not sign anybody in after a restart.
+
+Eight tests cover it (T252 to T259), and four of them were confirmed to fail
+against the old registration before the fix was kept, so they are known to be
+capable of catching it.
+
 **GitHub issue:** #
+
+---
+
+### 2026-10-16 Technical: the same refusal arrived as three different failures
+
+**Who hit it:** Nishadi
+
+**What happened:** Each remote service translated the server's refusals into
+the exceptions the screens already caught, so that a controller would behave
+the same whether it was talking to a local service or to the server. Each
+service did its own translating, and they disagreed. A role refusal from
+`account.create` arrived as an `IllegalArgumentException`, the same refusal
+from `account.findAll` arrived as a raw `ProtocolException`, because that
+method had nothing else to catch and so nobody had thought to add a
+translation to it. A screen catching one would not catch the other.
+
+**What was tried:** The end-to-end test found it, not by testing translation
+but by asking every operation in turn rather than a representative one. Fixing
+the inconsistent services one at a time was considered and rejected: five
+copies of a decision cannot be kept in agreement, and the next person to add a
+remote method would have had to notice that a translation was expected.
+
+**What fixed it:** One `Refusals.translate` used by `DrsClient.sendOrThrow`,
+which every request in the client passes through. The per-service translations
+were deleted. Not found, conflict and validation become
+`IllegalArgumentException`; access denied becomes `IllegalStateException`,
+because nothing about the request was wrong; an expired session, a bad
+signature and a storage failure travel on as they are, since presenting those
+as the person's mistake would send them looking for an error they did not make.
+`AccountManagementController` gained handling for the refusals the server can
+now return, including one call that had no error handling at all.
+
+**GitHub issue:** #
+
+---
+
+### 2026-10-16 Technical: the migration would have overwritten live reports without saying so
+
+**Who hit it:** Nishadi
+
+**What happened:** The data migration reads the Assessment 2 JSON files and
+writes through the MySQL repositories. Saving a report is an upsert, keyed on
+the reference number, and both systems allocate references from DR-0001
+upwards. So migrating into a database that had been in use would not fail:
+each migrated report would quietly replace a live one, and a disaster reported
+that morning would become a disaster reported the month before. Nothing would
+have reported a problem, and the counts returned would have looked correct.
+
+**What was tried:** Making the migration skip a reference that already exists
+was the first idea, which is what the protocol document originally specified.
+It is wrong: it would leave the Assessment 2 reports silently unmigrated and
+report them as skipped, which reads like a success. Renumbering the incoming
+reports was also considered and rejected, because the response tasks, alerts
+and audit entries already carried the old references.
+
+**What fixed it:** The migration refuses, with `CONFLICT`, when the database
+already holds any disaster report, and the message says to migrate into an
+empty database and names the command that produces one. Idempotence is handled
+separately and properly: the migration records itself in `schema_metadata`, so
+a second run does nothing at all and reports the date of the first and what it
+moved, rather than inferring from primary keys. PROTOCOL.md 5.7 was corrected
+to match, in version 1.2, with the reasoning.
+
+**GitHub issue:** #
+
+---
+
+### 2026-10-16 Collaborative: the frozen protocol and the code disagreed in four places
+
+**Who was involved:** Nishadi, with the protocol document as the team's shared
+contract
+
+**What happened:** PROTOCOL.md was frozen in commit 5 so that three people
+could build against it at once. Writing the client half of it was the first
+time the document and the code had to agree field by field, and four
+disagreements surfaced: `account.assignRole` was specified to return the
+altered user, `audit.verifyChain` to return two fields, `admin.migrate` to take
+a `confirm` flag and to infer idempotence from primary keys, and the version
+number in the header still said 1.0 after version 1.1 had been agreed.
+
+**How it was negotiated:** The rule applied was that the contract wins unless
+there is a reason the contract cannot be met. Where the document's name was as
+good as the code's, the code was changed: `account.create` now returns `user`,
+`account.findAll` returns `users` and `account.activate` returns `changed`,
+because those names were already written down and other members may have read
+them.
+
+Where the contract could not be met, the document was changed and the reason
+recorded in the section it belongs to. `assignRole` returns an acknowledgement
+because the local and remote implementations of the same interface must fail
+and return alike, and the local one returns nothing. `verifyChain` returns a
+status object with a `supported` field because the JSON store keeps no hash
+chain and must be able to say that the question cannot be answered, rather than
+claiming the trail is intact or reporting it as tampered with.
+
+**What was agreed:** Version 1.2 of PROTOCOL.md, with a change log entry naming
+each correction and its reason, so that the other two members can see what
+moved and why without reading the code. The operations reserved for their two
+features were not touched.
 
 ---
