@@ -155,3 +155,64 @@ that the caller was answered correctly.
 **GitHub issue:** #
 
 ---
+
+### 2026-10-15 Technical: one save method could not tell a new report from a changed one
+
+**Who hit it:** Nishadi, writing the MySQL data access for disaster reports.
+
+**What happened:** A test written to prove that two reports cannot share a
+reference failed, and failed in the worst way: nothing was thrown, and the
+second report quietly replaced the first.
+
+The repository inherited from Assessment 2 offers one method, `save`, used both
+for a report being lodged for the first time and for one that has been assessed
+or dispatched. It decided what to do by asking whether the reference was
+already stored, and updating if it was.
+
+In Assessment 2 that was sound. One person at one keyboard generated one
+reference at a time, so a reference was never claimed twice and save-or-update
+was always the right reading.
+
+With a server handling several clients at once it is not sound at all.
+References are produced by counting the reports already stored and adding one,
+so two people lodging a report in the same moment can both arrive at DR-0005.
+The first is stored. The second is seen as a change to the first and overwrites
+it. A reported disaster disappears, and nothing anywhere records that it ever
+existed: no error, no audit entry, no failed request.
+
+**What was tried:** The first attempt was to detect the clash at the point of
+writing, by checking whether the reference existed and letting the insert fail
+if it had been taken in the meantime. That is what the failing test exposed as
+useless. A legitimate update to an existing report and a second report claiming
+a taken reference are indistinguishable at that point, because both are a write
+to a reference that already exists. No amount of checking inside one method can
+separate two intentions the caller never expressed.
+
+**What fixed it:** The repository now offers `insert` as well as `save`, and
+the difference between them is the caller stating which it means. `insert` is
+for a report being lodged and refuses a reference that is taken.
+`save` is for a report that already exists and has changed. `ReportService`
+submits new reports with `insert`.
+
+Both implementations enforce it. The MySQL one does not check first and then
+insert, because another client could claim the reference between the question
+and the answer, and that window is the one being closed. It attempts the insert
+and lets the primary key decide, at the moment of writing, which is the only
+moment at which the answer cannot go stale.
+
+A test now stores two different disasters under one reference and asserts that
+the second is refused, that the first is untouched, and that only one report
+exists afterwards. A second test confirms `save` still updates the report that
+`insert` refuses to duplicate, so the two have not collapsed back into one.
+
+**What it changed about how the work is done:** Code inherited from Assessment
+2 is not automatically correct in Assessment 3, even when it is unchanged and
+its tests still pass. `save` was right for a single-user desktop prototype and
+became a data-loss defect the moment a server served two clients at once,
+without a line of it being edited. The assumptions a piece of code was written
+under travel with it, and moving it into a new architecture is the point at
+which those assumptions have to be re-examined rather than inherited.
+
+**GitHub issue:** #
+
+---

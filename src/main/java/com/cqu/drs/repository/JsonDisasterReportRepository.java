@@ -72,6 +72,25 @@ public class JsonDisasterReportRepository implements DisasterReportRepository {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * One process writes this file, so checking and then storing cannot be
+     * interrupted by another writer. The check is still made, because a
+     * reference used twice is a fault whatever the storage is, and the
+     * services above must behave the same whichever repository is in use.
+     */
+    @Override
+    public void insert(DisasterReport report) {
+        if (report == null) {
+            throw new IllegalArgumentException("Cannot save a null report.");
+        }
+        if (findByReference(report.getReferenceNumber()).isPresent()) {
+            throw new DuplicateReferenceException(report.getReferenceNumber(), null);
+        }
+        save(report);
+    }
+
+    /**
      * The number of reports held, used when generating the next reference.
      *
      * @return the count of stored reports
