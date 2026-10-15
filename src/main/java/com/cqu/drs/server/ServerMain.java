@@ -3,6 +3,11 @@ package com.cqu.drs.server;
 import com.cqu.drs.db.ConnectionFactory;
 import com.cqu.drs.db.DatabaseConfig;
 import com.cqu.drs.db.SchemaInitialiser;
+import com.cqu.drs.migration.DataMigrationService;
+import com.cqu.drs.migration.JsonMigrationSource;
+import com.cqu.drs.migration.MigrationLedger;
+import com.cqu.drs.migration.MigrationSource;
+import com.cqu.drs.migration.MySqlMigrationLedger;
 import com.cqu.drs.model.UserRole;
 import com.cqu.drs.protocol.Operation;
 import com.cqu.drs.repository.AlertRepository;
@@ -35,6 +40,7 @@ import com.cqu.drs.server.handler.FindReportByReferenceHandler;
 import com.cqu.drs.server.handler.IssueAlertHandler;
 import com.cqu.drs.server.handler.LoginHandler;
 import com.cqu.drs.server.handler.LogoutHandler;
+import com.cqu.drs.server.handler.MigrateHandler;
 import com.cqu.drs.server.handler.NearbyReportsHandler;
 import com.cqu.drs.server.handler.PingHandler;
 import com.cqu.drs.server.handler.QueueByPriorityHandler;
@@ -55,6 +61,7 @@ import com.cqu.drs.service.DepartmentService;
 import com.cqu.drs.service.ReportService;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -155,6 +162,16 @@ public final class ServerMain {
         DepartmentService departmentService =
                 new DepartmentService(departmentRepository, auditService);
 
+        // The migration reads the Assessment 2 files and writes through the
+        // same repositories as everything else, so the migrated rows are
+        // written under the constraints and transactions the application
+        // relies on rather than around them.
+        MigrationSource migrationSource =
+                new JsonMigrationSource(Path.of(config.migrationSourceDirectory()));
+        MigrationLedger migrationLedger = new MySqlMigrationLedger(connections);
+        DataMigrationService migrationService = new DataMigrationService(
+                migrationSource, departmentRepository, userRepository,
+                reportRepository, alertRepository, auditRepository, migrationLedger);
 
         if (departmentRepository.seedIfEmpty()) {
             log("Seeded the eight responding departments.");
@@ -164,7 +181,8 @@ public final class ServerMain {
         RequestDispatcher dispatcher = buildDispatcher(sessions, requestLog,
                 new ServerServices(authenticationService, reportService,
                         assessmentService, coordinationService, alertService,
-                        accountService, auditService, departmentService));
+                        accountService, auditService, departmentService,
+                        migrationService));
 
         DrsServer server = new DrsServer(config.serverPort(), config.serverThreads(), dispatcher);
 
@@ -191,6 +209,7 @@ public final class ServerMain {
                 + ", serving up to " + server.getPoolSize() + " clients at once.");
         log(dispatcher.handlerCount() + " of " + Operation.values().length
                 + " operations are available.");
+        log("Migration source: " + migrationSource.describe());
         reportUnhandled(dispatcher);
         log("Press Ctrl+C to stop.");
 
@@ -259,7 +278,9 @@ public final class ServerMain {
                 .register(new FindAllAccountsHandler(services.accounts()))
                 // Audit
                 .register(new FindAllAuditHandler(services.audit()))
-                .register(new VerifyChainHandler(services.audit()));
+                .register(new VerifyChainHandler(services.audit()))
+                // Migration
+                .register(new MigrateHandler(services.migration()));
     }
 
     /**

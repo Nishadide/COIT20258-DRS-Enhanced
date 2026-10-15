@@ -1,5 +1,6 @@
 package com.cqu.drs.server;
 
+import com.cqu.drs.migration.MigrationOperations;
 import com.cqu.drs.service.AccountOperations;
 import com.cqu.drs.service.AlertOperations;
 import com.cqu.drs.service.AssessmentOperations;
@@ -14,7 +15,7 @@ import com.cqu.drs.service.ReportOperations;
  * registrations can be passed them all.
  *
  * <h2>Why this exists</h2>
- * {@link ServerMain#buildDispatcher} registers twenty-eight handlers, and
+ * {@link ServerMain#buildDispatcher} registers twenty-nine handlers, and
  * writing that list in the server and again in the tests would mean a handler
  * could be registered in one and forgotten in the other. The test that proves
  * every declared operation has a handler would then be proving it about the
@@ -42,6 +43,7 @@ import com.cqu.drs.service.ReportOperations;
  * @param accounts       managing staff accounts
  * @param audit          reading and verifying the audit trail
  * @param departments    the departments and their availability
+ * @param migration      carrying the Assessment 2 data into the database
  */
 public record ServerServices(AuthenticationService authentication,
                              ReportOperations reports,
@@ -50,7 +52,8 @@ public record ServerServices(AuthenticationService authentication,
                              AlertOperations alerts,
                              AccountOperations accounts,
                              AuditOperations audit,
-                             DepartmentOperations departments) {
+                             DepartmentOperations departments,
+                             MigrationOperations migration) {
 
     /**
      * Creates the set, refusing an incomplete one.
@@ -63,7 +66,7 @@ public record ServerServices(AuthenticationService authentication,
     public ServerServices {
         if (authentication == null || reports == null || assessments == null
                 || coordination == null || alerts == null || accounts == null
-                || audit == null || departments == null) {
+                || audit == null || departments == null || migration == null) {
             throw new IllegalArgumentException(
                     "Every service the handlers need must be supplied.");
         }

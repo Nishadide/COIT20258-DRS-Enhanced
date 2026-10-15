@@ -40,6 +40,7 @@ public final class DatabaseConfig {
     public static final String KEY_DB_PARAMS = "drs.db.params";
     public static final String KEY_CREATE_SCHEMA = "drs.db.createSchema";
     public static final String KEY_CLIENT_MODE = "drs.client.mode";
+    public static final String KEY_MIGRATION_SOURCE = "drs.migration.source";
 
     private static final String DEFAULT_SERVER_HOST = "localhost";
     private static final int DEFAULT_SERVER_PORT = 5050;
@@ -52,6 +53,7 @@ public final class DatabaseConfig {
     private static final String DEFAULT_DB_PARAMS =
             "sslMode=DISABLED&allowPublicKeyRetrieval=true"
             + "&characterEncoding=UTF-8&rewriteBatchedStatements=true";
+    private static final String DEFAULT_MIGRATION_SOURCE = "data";
 
     private final Properties fileProperties;
 
@@ -201,6 +203,22 @@ public final class DatabaseConfig {
 
     public boolean createSchemaOnStartup() {
         return getBoolean(KEY_CREATE_SCHEMA, true);
+    }
+
+    /**
+     * The folder holding the JSON files Assessment 2 wrote, which the
+     * migration reads.
+     *
+     * The default is the same folder the desktop application used, so a copy
+     * of the DRS-Initial project directory needs no configuration at all. It
+     * is a setting rather than a constant because the data being migrated is
+     * not always where the server is running: a marker following the
+     * demonstration may have the files somewhere else entirely.
+     *
+     * @return the folder to read the Assessment 2 data from
+     */
+    public String migrationSourceDirectory() {
+        return get(KEY_MIGRATION_SOURCE, DEFAULT_MIGRATION_SOURCE);
     }
 
     /**

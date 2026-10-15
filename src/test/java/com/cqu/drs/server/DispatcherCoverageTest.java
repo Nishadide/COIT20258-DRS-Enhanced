@@ -1,5 +1,8 @@
 package com.cqu.drs.server;
 
+import com.cqu.drs.migration.DataMigrationService;
+import com.cqu.drs.migration.JsonMigrationSource;
+import com.cqu.drs.migration.MigrationLedger;
 import com.cqu.drs.protocol.Operation;
 import com.cqu.drs.repository.InMemoryRequestLogRepository;
 import com.cqu.drs.repository.JsonAlertRepository;
@@ -21,7 +24,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -66,26 +72,30 @@ class DispatcherCoverageTest {
                         new AlertService(reports, alerts, audit),
                         new AccountService(accounts, audit),
                         audit,
-                        new DepartmentService(departments, audit)));
+                        new DepartmentService(departments, audit),
+                        new DataMigrationService(new JsonMigrationSource(folder),
+                                departments, accounts, reports, alerts, auditTrail,
+                                new MapLedger())));
     }
 
     @Test
-    @DisplayName("T317: only admin.migrate is left without a handler")
-    void onlyTheOneUnbuiltOperationHasNoHandler(@TempDir Path folder) {
+    @DisplayName("T317: no declared operation is left without a handler")
+    void everyOperationHasAHandler(@TempDir Path folder) {
         List<Operation> missing = buildRealDispatcher(folder).unhandledOperations();
 
-        // admin.migrate is declared and is written in the next commit. Naming
-        // the one expected gap, rather than allowing any gap, means a second
-        // forgotten handler fails here instead of hiding behind this one.
-        assertEquals(List.of(Operation.ADMIN_MIGRATE), missing,
+        assertTrue(missing.isEmpty(),
                 "These operations are declared in the protocol and cannot be "
                         + "carried out: " + missing);
     }
 
     @Test
-    @DisplayName("T318: every other operation has a handler")
-    void everyOtherOperationHasAHandler(@TempDir Path folder) {
-        assertEquals(Operation.values().length - 1,
+    @DisplayName("T318: the handler count matches the number of operations")
+    void handlerCountMatchesOperationCount(@TempDir Path folder) {
+        // Said separately from T317 because the two fail for different
+        // reasons. A handler registered for an operation that no longer exists
+        // would not show up as missing, and this is where the arithmetic stops
+        // adding up.
+        assertEquals(Operation.values().length,
                 buildRealDispatcher(folder).handlerCount());
     }
 
@@ -98,9 +108,6 @@ class DispatcherCoverageTest {
             Operation found = Operation.fromWireName(operation.wireName()).orElseThrow(
                     () -> new AssertionError("The wire name " + operation.wireName()
                             + " does not resolve to an operation."));
-            if (found == Operation.ADMIN_MIGRATE) {
-                continue;
-            }
             assertTrue(dispatcher.handles(found),
                     "Nothing handles " + operation.wireName() + ".");
         }
@@ -112,7 +119,27 @@ class DispatcherCoverageTest {
         // Rather than failing later as an INTERNAL_ERROR from whichever
         // handler happened to need the missing one.
         assertThrows(IllegalArgumentException.class, () -> new ServerServices(
-                null, null, null, null, null, null, null, null));
+                null, null, null, null, null, null, null, null, null));
     }
 
+    /** A ledger in a map; this test never runs a migration. */
+    private static final class MapLedger implements MigrationLedger {
+
+        private final Map<String, String> entries = new HashMap<>();
+
+        @Override
+        public boolean hasRun(String item) {
+            return entries.containsKey(item);
+        }
+
+        @Override
+        public Optional<String> detailOf(String item) {
+            return Optional.ofNullable(entries.get(item));
+        }
+
+        @Override
+        public void record(String item, String detail) {
+            entries.put(item, detail);
+        }
+    }
 }

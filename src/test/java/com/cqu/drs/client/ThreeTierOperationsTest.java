@@ -1,5 +1,8 @@
 package com.cqu.drs.client;
 
+import com.cqu.drs.migration.DataMigrationService;
+import com.cqu.drs.migration.JsonMigrationSource;
+import com.cqu.drs.migration.MigrationLedger;
 import com.cqu.drs.model.Alert;
 import com.cqu.drs.model.AlertType;
 import com.cqu.drs.model.Assessment;
@@ -149,7 +152,11 @@ class ThreeTierOperationsTest {
                 new InMemoryRequestLogRepository(),
                 new ServerServices(authenticationService, reportService,
                         assessmentService, coordinationService, alertService,
-                        accountService, auditService, departmentService));
+                        accountService, auditService, departmentService,
+                        new DataMigrationService(new JsonMigrationSource(serverData),
+                                departmentRepository, userRepository, reportRepository,
+                                alertRepository, auditRepository,
+                                new RefusingLedger())));
 
         server = new DrsServer(0, 8, dispatcher);
         server.start();
@@ -640,4 +647,30 @@ class ThreeTierOperationsTest {
         assertThrows(IllegalStateException.class, () -> reports.findAll());
     }
 
+    /**
+     * A ledger that says every migration has already happened.
+     *
+     * This test never migrates, and a migration started by accident here
+     * would read the server's own temporary folder and write what it found
+     * back into it. Saying the work is already done is the safest answer a
+     * ledger can give to a test that is not testing migration.
+     */
+    private static final class RefusingLedger implements MigrationLedger {
+
+        @Override
+        public boolean hasRun(String item) {
+            return true;
+        }
+
+        @Override
+        public Optional<String> detailOf(String item) {
+            return Optional.of("Migration is switched off for this test.");
+        }
+
+        @Override
+        public void record(String item, String detail) {
+            throw new UnsupportedOperationException(
+                    "This test should not have run a migration.");
+        }
+    }
 }
