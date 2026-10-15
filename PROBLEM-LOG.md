@@ -102,3 +102,56 @@ trusting a command's output or its exit code.
 **GitHub issue:** #
 
 ---
+
+### 2026-10-15 Technical: replaying a request erased the record of the original
+
+**Who hit it:** Nishadi, building the multi-threaded server.
+
+**What happened:** The server refuses a request whose identifier has been seen
+before, which is how a captured request is stopped from being sent twice. The
+unit tests for this passed. Run against a real database, the refusal worked and
+something else did not.
+
+The same request was sent twice on one connection. The first succeeded, the
+second was refused as a replay, and both results were correct as far as the
+client could see. The request log told a different story: the row for the
+original request now read `ERROR / REPLAY_DETECTED`. The record that it had
+succeeded was gone.
+
+The cause was an ordering mistake in the dispatcher. Every request ended by
+writing its outcome to the log row bearing its identifier. A replay carries the
+identifier of the request it is copying, so writing its outcome overwrote the
+original request's row.
+
+The consequence was the opposite of what the log exists for. The request log is
+there so that an action cannot later be denied. Anyone who captured a
+successful request could have destroyed the evidence that it ever succeeded
+simply by sending it again, and the second send needed no key, no session and
+no privileges.
+
+**What was tried:** Nothing, in the sense of a search. The fault was visible in
+the first line of output as soon as the log was printed, and the cause was
+clear once the question was asked. The difficulty was not diagnosis. It was
+that nothing in the unit tests had asked the question at all: they checked that
+the client received the right refusal and that the handler did not run a second
+time, and never checked what the refusal did to the stored record.
+
+**What fixed it:** The outcome is now written only by a request that
+successfully claimed its identifier. A replay claims nothing, so it writes
+nothing and the original row is untouched. The same applies when the log cannot
+be written at all: nothing was recorded, so there is nothing to complete.
+
+A regression test asserts that after a replay the original row still says `OK`
+and carries no error code, and that exactly one completion was written for the
+two sends.
+
+**What it changed about how the work is done:** A test that checks the reply is
+not a test of the side effect. Both defects recorded in this log were found by
+running the system against a real database, and neither would have been found
+by reading the code or by the tests as they stood. For anything that writes a
+record, there is now a test that reads the record back rather than trusting
+that the caller was answered correctly.
+
+**GitHub issue:** #
+
+---
