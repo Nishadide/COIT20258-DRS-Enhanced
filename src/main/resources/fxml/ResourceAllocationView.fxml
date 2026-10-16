@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.cqu.drs.controller.ResourceAllocationController"
+            prefHeight="680.0" prefWidth="980.0" stylesheets="@../css/drs.css">
+
+    <top>
+        <VBox spacing="4.0" styleClass="header-bar">
+            <Label styleClass="header-title" text="Allocate resources" />
+            <Label styleClass="header-subtitle"
+                   text="Resources are shared across every active disaster. What is free now may be taken by another coordinator before you press Allocate, so the figures are confirmed by the server." />
+        </VBox>
+    </top>
+
+    <center>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER">
+            <VBox spacing="12.0" styleClass="content-pane">
+
+                <Label styleClass="section-title" text="Report" />
+                <TextArea fx:id="reportArea" editable="false" minHeight="70.0"
+                          prefHeight="70.0" wrapText="true" />
+
+                <VBox spacing="10.0" styleClass="card">
+
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <Label styleClass="field-label" text="Available resources *" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Label fx:id="poolHint" styleClass="hint-text" wrapText="true" />
+                        <Button fx:id="refreshButton" onAction="#handleRefresh"
+                                styleClass="button-secondary" text="Refresh" />
+                    </HBox>
+
+                    <!-- minHeight matters: without it the table collapses to nothing
+                         whenever the window is shorter than the content. -->
+                    <TableView fx:id="resourceTable" minHeight="190.0" prefHeight="200.0">
+                        <columns>
+                            <TableColumn fx:id="resourceNameColumn" prefWidth="210.0" text="Resource" />
+                            <TableColumn fx:id="resourceDepartmentColumn" prefWidth="200.0" text="Department" />
+                            <TableColumn fx:id="resourceTypeColumn" prefWidth="130.0" text="Kind" />
+                            <TableColumn fx:id="resourceAvailableColumn" prefWidth="190.0" text="Available" />
+                        </columns>
+                    </TableView>
+
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <Label styleClass="field-label" text="Units" />
+                        <Spinner fx:id="unitsSpinner" editable="true" prefWidth="110.0" />
+                        <Button fx:id="allocateButton" onAction="#handleAllocate"
+                                styleClass="button-primary" text="Allocate" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Button fx:id="backButton" onAction="#handleBack"
+                                styleClass="button-secondary" text="Back to dashboard" />
+                    </HBox>
+
+                    <Label fx:id="messageLabel" styleClass="error-text" wrapText="true" />
+                </VBox>
+
+                <Label styleClass="section-title" text="Committed to this disaster" />
+                <TableView fx:id="allocationTable" minHeight="160.0" prefHeight="190.0">
+                    <columns>
+                        <TableColumn fx:id="allocationResourceColumn" prefWidth="230.0" text="Resource" />
+                        <TableColumn fx:id="allocationUnitsColumn" prefWidth="120.0" text="Units" />
+                        <TableColumn fx:id="allocationStatusColumn" prefWidth="120.0" text="Status" />
+                        <TableColumn fx:id="allocationWhoColumn" prefWidth="160.0" text="Requested by" />
+                        <TableColumn fx:id="allocationWhenColumn" prefWidth="170.0" text="Allocated at" />
+                    </columns>
+                </TableView>
+
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Button fx:id="releaseButton" onAction="#handleRelease"
+                            styleClass="button-secondary" text="Release selected allocation" />
+                    <Label styleClass="hint-text" wrapText="true"
+                           text="Releasing returns the units to the pool so another disaster can use them. Released allocations stay in the list as a record of what was committed." />
+                </HBox>
+
+            </VBox>
+        </ScrollPane>
+    </center>
+
+</BorderPane>
