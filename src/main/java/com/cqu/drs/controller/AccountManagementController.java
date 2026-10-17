@@ -3,8 +3,10 @@ package com.cqu.drs.controller;
 import com.cqu.drs.AppContext;
 import com.cqu.drs.Navigator;
 import com.cqu.drs.model.AuditLogEntry;
+import com.cqu.drs.model.DisasterReport;
 import com.cqu.drs.model.Department;
 import com.cqu.drs.model.DepartmentResponder;
+import com.cqu.drs.model.TriageCategory;
 import com.cqu.drs.model.User;
 import com.cqu.drs.model.UserRole;
 import com.cqu.drs.repository.AuditChainStatus;
@@ -25,6 +27,7 @@ import javafx.scene.control.TextField;
 
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
@@ -69,6 +72,9 @@ public class AccountManagementController implements Initializable {
     private Label availabilityLabel;
     @FXML
     private Button dashboardButton;
+
+    @FXML
+    private Button casualtySummaryButton;
 
     private final AppContext context = AppContext.getInstance();
 
@@ -352,6 +358,85 @@ public class AccountManagementController implements Initializable {
      *
      * @param event the button press
      */
+    /**
+     * Shows the casualty counts an administrator is allowed to see.
+     *
+     * <p>The protocol lets an administrator send {@code casualty.summary},
+     * which answers with counts by triage category and nothing else, and
+     * refuses {@code casualty.findForReport}, which would answer with the
+     * records themselves. Until this screen existed the permission had no way
+     * of being exercised, because the only screen that asked for a summary was
+     * the casualty registry, and that screen also reads the records, so it is
+     * a coordinator's screen and an administrator cannot open it. The counts
+     * are assembled here from the two operations an administrator may send:
+     * {@code report.findAll} for the references, and {@code casualty.summary}
+     * for each one.</p>
+     *
+     * @param event the button press
+     */
+    @FXML
+    private void handleCasualtySummary(ActionEvent event) {
+        List<DisasterReport> reports = context.getReportService().findAll();
+
+        if (reports.isEmpty()) {
+            Navigator.showInfo("No reports to summarise",
+                    "There are no disaster reports in the system, so there "
+                            + "are no casualty counts to show.");
+            return;
+        }
+
+        StringBuilder text = new StringBuilder();
+        int[] totals = new int[TriageCategory.values().length];
+        int grandTotal = 0;
+
+        for (DisasterReport report : reports) {
+            Map<TriageCategory, Integer> counts =
+                    context.getCasualtyService()
+                            .summaryFor(report.getReferenceNumber());
+
+            int reportTotal = 0;
+            StringBuilder line = new StringBuilder();
+            for (TriageCategory category : TriageCategory.values()) {
+                int count = counts.getOrDefault(category, 0);
+                totals[category.ordinal()] += count;
+                reportTotal += count;
+                if (line.length() > 0) {
+                    line.append("   ");
+                }
+                line.append(category.getLabel()).append(": ").append(count);
+            }
+            grandTotal += reportTotal;
+
+            text.append(report.getReferenceNumber())
+                    .append("   (").append(reportTotal).append(" in total)")
+                    .append(System.lineSeparator())
+                    .append("    ").append(line)
+                    .append(System.lineSeparator())
+                    .append(System.lineSeparator());
+        }
+
+        StringBuilder across = new StringBuilder();
+        for (TriageCategory category : TriageCategory.values()) {
+            if (across.length() > 0) {
+                across.append("   ");
+            }
+            across.append(category.getLabel()).append(": ")
+                    .append(totals[category.ordinal()]);
+        }
+
+        text.append("Across all reports   (").append(grandTotal)
+                .append(" in total)").append(System.lineSeparator())
+                .append("    ").append(across);
+
+        Navigator.showInfo("Casualty counts by triage category",
+                text.toString().trim()
+                        + System.lineSeparator() + System.lineSeparator()
+                        + "Counts only. An administrator manages accounts and "
+                        + "has no reason to read a casualty's name, so the "
+                        + "protocol gives this role no operation that returns "
+                        + "one.");
+    }
+
     @FXML
     private void handleVerifyChain(ActionEvent event) {
         AuditChainStatus status = context.getAuditService().verifyChain();
