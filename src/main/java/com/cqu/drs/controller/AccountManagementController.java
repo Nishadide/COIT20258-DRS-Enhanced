@@ -3,8 +3,10 @@ package com.cqu.drs.controller;
 import com.cqu.drs.AppContext;
 import com.cqu.drs.Navigator;
 import com.cqu.drs.model.AuditLogEntry;
+import com.cqu.drs.model.DisasterReport;
 import com.cqu.drs.model.Department;
 import com.cqu.drs.model.DepartmentResponder;
+import com.cqu.drs.model.TriageCategory;
 import com.cqu.drs.model.User;
 import com.cqu.drs.model.UserRole;
 import javafx.beans.property.SimpleStringProperty;
@@ -23,6 +25,7 @@ import javafx.scene.control.TextField;
 
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
@@ -65,6 +68,9 @@ public class AccountManagementController implements Initializable {
     private ComboBox<Department> availabilityCombo;
     @FXML
     private Label availabilityLabel;
+
+    @FXML
+    private Button casualtySummaryButton;
 
     private final AppContext context = AppContext.getInstance();
 
@@ -312,6 +318,7 @@ public class AccountManagementController implements Initializable {
     }
 
     /**
+
      * Builds a cell naming a department, optionally with its availability.
      *
      * @param showAvailability true to append whether the department can take work
