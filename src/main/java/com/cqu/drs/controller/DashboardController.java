@@ -3,7 +3,6 @@ package com.cqu.drs.controller;
 import com.cqu.drs.AppContext;
 import com.cqu.drs.Navigator;
 import com.cqu.drs.model.DisasterReport;
-import com.cqu.drs.model.UserRole;
 import com.cqu.drs.model.DisasterType;
 import com.cqu.drs.model.DrsConstants;
 import com.cqu.drs.model.Priority;
@@ -15,7 +14,6 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -37,8 +35,6 @@ public class DashboardController implements Initializable {
 
     @FXML
     private Label userLabel;
-    @FXML
-    private Button accountsButton;
     @FXML
     private Label countLabel;
     @FXML
@@ -75,23 +71,6 @@ public class DashboardController implements Initializable {
         configureColumns();
         configureFilters();
         refreshTable();
-        hideWhatThisRoleCannotUse();
-    }
-
-    /**
-     * Removes the link to the accounts screen for anybody who cannot use it.
-     *
-     * Listing accounts is permitted to an administrator only, so a
-     * coordinator who followed this link was shown a refusal for pressing a
-     * button the application had offered them. The same slip in the other
-     * direction is handled on the accounts screen.
-     */
-    private void hideWhatThisRoleCannotUse() {
-        boolean administrator = context.getCurrentUser()
-                .map(user -> user.getRole() == UserRole.ADMINISTRATOR)
-                .orElse(false);
-        accountsButton.setVisible(administrator);
-        accountsButton.setManaged(administrator);
     }
 
     /**
@@ -250,51 +229,6 @@ public class DashboardController implements Initializable {
         }
         selectedReference = report.getReferenceNumber();
         Navigator.goTo("CoordinationView.fxml", "Coordinate a response");
-    }
-
-    /**
-     * Opens the screen that commits finite resources to the selected disaster.
-     *
-     * An assessment is required first, for the same reason dispatching one is:
-     * committing crews to a disaster nobody has judged the seriousness of is
-     * how the wrong disaster gets the last ambulance.
-     *
-     * @param event the button press
-     */
-    @FXML
-    private void handleResources(ActionEvent event) {
-        DisasterReport report = selected();
-        if (report == null) {
-            return;
-        }
-        if (!report.isAssessed()) {
-            Navigator.showWarning("Not yet assessed",
-                    "Assess " + report.getReferenceNumber()
-                            + " before committing resources to it.");
-            return;
-        }
-        selectedReference = report.getReferenceNumber();
-        Navigator.goTo("ResourceAllocationView.fxml", "Allocate resources");
-    }
-
-    /**
-     * Opens the casualty registry for the selected disaster.
-     *
-     * No assessment is required first, unlike dispatching or allocating
-     * resources. People are hurt from the moment a disaster is reported, and
-     * a registry that refused to record them until a coordinator had judged
-     * the severity would be closed during the hour it is most needed.
-     *
-     * @param event the button press
-     */
-    @FXML
-    private void handleCasualties(ActionEvent event) {
-        DisasterReport report = selected();
-        if (report == null) {
-            return;
-        }
-        selectedReference = report.getReferenceNumber();
-        Navigator.goTo("CasualtyRegistryView.fxml", "Casualty registry");
     }
 
     @FXML
