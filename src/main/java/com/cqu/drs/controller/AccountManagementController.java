@@ -7,13 +7,11 @@ import com.cqu.drs.model.Department;
 import com.cqu.drs.model.DepartmentResponder;
 import com.cqu.drs.model.User;
 import com.cqu.drs.model.UserRole;
-import com.cqu.drs.repository.AuditChainStatus;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -92,30 +90,6 @@ public class AccountManagementController implements Initializable {
 
         configureColumns();
         refreshUsers();
-        hideWhatThisRoleCannotUse();
-    }
-
-    /**
-     * Removes the link to the coordinator dashboard for anybody who cannot
-     * use it.
-     *
-     * The dashboard fills its table from the assessment queue, and the
-     * protocol permits those two operations to a coordinator only. An
-     * administrator who followed this link therefore reached a screen that
-     * asked the server for something it would refuse, and was shown a
-     * failure for pressing a button the application had offered them.
-     *
-     * Hiding the button rather than handling the refusal is the right fix,
-     * because the refusal is correct: an administrator manages accounts and
-     * the audit trail, and does not coordinate a response. The server's rule
-     * is unchanged, and the screen now agrees with it.
-     */
-    private void hideWhatThisRoleCannotUse() {
-        boolean coordinator = context.getCurrentUser()
-                .map(user -> user.getRole() == UserRole.COORDINATOR)
-                .orElse(false);
-        dashboardButton.setVisible(coordinator);
-        dashboardButton.setManaged(coordinator);
     }
 
     private void configureColumns() {
@@ -337,41 +311,6 @@ public class AccountManagementController implements Initializable {
         }
         Navigator.showInfo("Audit log, most recent "
                 + (entries.size() - from) + " entries", text.toString());
-    }
-
-    /**
-     * Checks that the audit trail has not been altered, and reports what was
-     * found.
-     *
-     * The check is done by the server over the stored entries, not here. A
-     * client that verified its own copy would prove nothing: it would be
-     * checking the figures it had just been handed. What this button does is
-     * ask, and then say plainly which of the three answers came back, because
-     * "the chain could not be checked" and "the chain is intact" are different
-     * answers and showing them identically would hide the difference.
-     *
-     * @param event the button press
-     */
-    @FXML
-    private void handleVerifyChain(ActionEvent event) {
-        AuditChainStatus status = context.getAuditService().verifyChain();
-
-        if (!status.supported()) {
-            Navigator.showWarning("The audit chain cannot be checked",
-                    status.detail());
-            return;
-        }
-        if (status.intact()) {
-            Navigator.showInfo("The audit chain is intact", status.detail());
-            return;
-        }
-        Navigator.showError("The audit chain is broken",
-                status.detail()
-                        + "\n\nThe first entry that does not add up is number "
-                        + status.brokenAtSequence() + ". Entries before it are "
-                        + "unaffected; every entry after it depends on the one "
-                        + "that broke, so the trail cannot be relied on from "
-                        + "that point on.");
     }
 
     /**
