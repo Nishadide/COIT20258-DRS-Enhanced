@@ -24,8 +24,12 @@
                 <Label fx:id="userLabel" styleClass="header-subtitle" text="Signed in" />
             </VBox>
             <Region HBox.hgrow="ALWAYS" />
+            <Button fx:id="casualtySummaryButton" onAction="#handleCasualtySummary"
+                    styleClass="button-secondary" text="Casualty summary" />
             <Button fx:id="auditButton" onAction="#handleViewAudit"
                     styleClass="button-secondary" text="Audit log" />
+            <Button fx:id="verifyChainButton" onAction="#handleVerifyChain"
+                    styleClass="button-secondary" text="Verify audit chain" />
             <Button fx:id="logoutButton" onAction="#handleLogout"
                     styleClass="button-secondary" text="Sign out" />
         </HBox>
